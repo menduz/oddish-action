@@ -1,0 +1,31 @@
+{
+  "name": "oddish-action",
+  "version": "1.0.0",
+  "description": "## Usage",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/menduz/oddish-action.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/menduz/oddish-action/issues"
+  },
+  "homepage": "https://github.com/menduz/oddish-action#readme",
+  "dependencies": {
+    "@types/git-rev-sync": "^1.12.0",
+    "@types/node": "^13.13.0",
+    "@types/node-fetch": "^2.5.6",
+    "@types/semver": "^7.1.0",
+    "git-rev-sync": "^2.0.0",
+    "node-fetch": "^2.6.0",
+    "semver": "^7.3.2",
+    "ts-node": "^8.8.2",
+    "typescript": "^3.8.3"
+  }
+}
