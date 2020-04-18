@@ -30,15 +30,14 @@ const time = new Date()
 
 console.log(`> oddish`);
 
-
 function configAuthentication(registryUrl: string, alwaysAuth: string) {
   const npmrc: string = resolve(
-    process.env['RUNNER_TEMP'] || process.cwd(),
-    '.npmrc'
+    process.env["RUNNER_TEMP"] || process.cwd(),
+    ".npmrc"
   );
 
-  if (!registryUrl.endsWith('/')) {
-    registryUrl += '/';
+  if (!registryUrl.endsWith("/")) {
+    registryUrl += "/";
   }
 
   writeRegistryToFile(registryUrl, npmrc, alwaysAuth);
@@ -49,40 +48,40 @@ function writeRegistryToFile(
   fileLocation: string,
   alwaysAuth: string
 ) {
-  let scope: string = core.getInput('scope');
-  if (!scope && registryUrl.indexOf('npm.pkg.github.com') > -1) {
+  let scope: string = core.getInput("scope");
+  if (!scope && registryUrl.indexOf("npm.pkg.github.com") > -1) {
     scope = github.context.repo.owner;
   }
-  if (scope && scope[0] != '@') {
-    scope = '@' + scope;
+  if (scope && scope[0] != "@") {
+    scope = "@" + scope;
   }
   if (scope) {
     scope = scope.toLowerCase();
   }
 
   core.debug(`Setting auth in ${fileLocation}`);
-  let newContents: string = '';
+  let newContents: string = "";
   if (fs.existsSync(fileLocation)) {
-    const curContents: string = fs.readFileSync(fileLocation, 'utf8');
+    const curContents: string = fs.readFileSync(fileLocation, "utf8");
     curContents.split(os.EOL).forEach((line: string) => {
       // Add current contents unless they are setting the registry
-      if (!line.toLowerCase().startsWith('registry')) {
+      if (!line.toLowerCase().startsWith("registry")) {
         newContents += line + os.EOL;
       }
     });
   }
   // Remove http: or https: from front of registry.
   const authString: string =
-    registryUrl.replace(/(^\w+:|^)/, '') + ':_authToken=${NODE_AUTH_TOKEN}';
+    registryUrl.replace(/(^\w+:|^)/, "") + ":_authToken=${NODE_AUTH_TOKEN}";
   const registryString: string = scope
     ? `${scope}:registry=${registryUrl}`
     : `registry=${registryUrl}`;
   const alwaysAuthString: string = `always-auth=${alwaysAuth}`;
   newContents += `${authString}${os.EOL}${registryString}${os.EOL}${alwaysAuthString}`;
   fs.writeFileSync(fileLocation, newContents);
-  core.exportVariable('NPM_CONFIG_USERCONFIG', fileLocation);
+  core.exportVariable("NPM_CONFIG_USERCONFIG", fileLocation);
   // Export empty node_auth_token so npm doesn't complain about not being able to find it
-  core.exportVariable('NODE_AUTH_TOKEN', 'XXXXX-XXXXX-XXXXX-XXXXX');
+  core.exportVariable("NODE_AUTH_TOKEN", "XXXXX-XXXXX-XXXXX-XXXXX");
 }
 
 /**
@@ -114,7 +113,7 @@ async function execute(command: string): Promise<string> {
 }
 
 async function getBranch(): Promise<string> {
-  return git.branch() as any;
+  return git.branch(process.cwd()) as any;
 }
 
 async function setVersion(newVersion: string): Promise<string> {
@@ -146,7 +145,7 @@ async function getVersion() {
 }
 
 function snapshotize(value: string) {
-  const commit = git.short();
+  const commit = git.short(process.cwd());
 
   if (!commit) {
     throw new Error("Unable to get git commit");
@@ -200,9 +199,9 @@ async function getReleaseTags() {
 console.log(`  pwd: ${process.cwd()}`);
 
 const run = async () => {
-  const registryUrl: string = core.getInput('registry-url');
-  const alwaysAuth: string = core.getInput('always-auth');
-  
+  const registryUrl: string = core.getInput("registry-url");
+  const alwaysAuth: string = core.getInput("always-auth");
+
   if (registryUrl) {
     await configAuthentication(registryUrl, alwaysAuth);
   }
