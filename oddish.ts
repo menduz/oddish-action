@@ -196,15 +196,16 @@ async function getReleaseTags() {
   }
 }
 
-console.log(`  pwd: ${process.cwd()}`);
-
 const run = async () => {
-  const registryUrl: string = core.getInput("registry-url");
-  const alwaysAuth: string = core.getInput("always-auth");
+  const registryUrl: string =
+    core.getInput("registry-url") || "https://registry.npmjs.org";
+  const alwaysAuth: string = core.getInput("always-auth") || "false";
 
-  if (registryUrl) {
-    await configAuthentication(registryUrl, alwaysAuth);
+  if (!process.env.NODE_AUTH_TOKEN) {
+    console.log(`! warn: variable NODE_AUTH_TOKEN is not set`);
   }
+
+  configAuthentication(registryUrl, alwaysAuth);
 
   let branch =
     process.env.CIRCLE_BRANCH ||
