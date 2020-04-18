@@ -15,9 +15,9 @@ sanitize() {
   fi
 }
 
-sanitize "${INPUT_APITOKEN}" "npmToken"
+sanitize "${INPUT_NPMTOKEN}" "npmToken"
 
-echo "//registry.npmjs.org/:_authToken=$INPUT_APITOKEN" > ~/.npmrc
+echo "//registry.npmjs.org/:_authToken=$INPUT_NPMTOKEN" > ~/.npmrc
 
 npm install
 
