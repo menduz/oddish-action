@@ -78,10 +78,13 @@ function writeRegistryToFile(
     : `registry=${registryUrl}`;
   const alwaysAuthString: string = `always-auth=${alwaysAuth}`;
   newContents += `${authString}${os.EOL}${registryString}${os.EOL}${alwaysAuthString}`;
+  console.log(`  writing: ${fileLocation}`);
   fs.writeFileSync(fileLocation, newContents);
   core.exportVariable("NPM_CONFIG_USERCONFIG", fileLocation);
   // Export empty node_auth_token so npm doesn't complain about not being able to find it
-  core.exportVariable("NODE_AUTH_TOKEN", "XXXXX-XXXXX-XXXXX-XXXXX");
+  if (!process.env.NODE_AUTH_TOKEN) {
+    core.exportVariable("NODE_AUTH_TOKEN", "XXXXX-XXXXX-XXXXX-XXXXX");
+  }
 }
 
 /**
@@ -197,15 +200,16 @@ async function getReleaseTags() {
 }
 
 const run = async () => {
-  const registryUrl: string =
-    core.getInput("registry-url") || "https://registry.npmjs.org";
+  const registryUrl: string = core.getInput("registry-url");
   const alwaysAuth: string = core.getInput("always-auth") || "false";
 
   if (!process.env.NODE_AUTH_TOKEN) {
     console.log(`! warn: variable NODE_AUTH_TOKEN is not set`);
   }
 
-  configAuthentication(registryUrl, alwaysAuth);
+  if (process.env.NODE_AUTH_TOKEN || registryUrl) {
+    configAuthentication(registryUrl, alwaysAuth);
+  }
 
   let branch =
     process.env.CIRCLE_BRANCH ||
