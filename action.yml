@@ -4,8 +4,8 @@ branding:
   color: 'red'
 description: 'Deploy your NPM package using oddish directly from GitHub'
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
+  using: 'node12'
+  main: 'oddish.js'
 inputs:
   npmToken:
     description: "Your NPM Token"

@@ -2,6 +2,9 @@
 
 // tslint:disable:no-console
 
+import core = require("@actions/core");
+import github = require("@actions/github");
+
 import { exec } from "child_process";
 import fetch from "node-fetch";
 import semver = require("semver");
@@ -58,12 +61,14 @@ async function getBranch(): Promise<string> {
 }
 
 async function setVersion(newVersion: string): Promise<string> {
+  core.setOutput("version", newVersion);
   return execute(
     `npm version "${newVersion}" --force --no-git-tag-version --allow-same-version`
   );
 }
 
 async function publish(npmTag: string[] = []): Promise<string> {
+  core.setOutput("tags", npmTag.join(","));
   return execute(
     `npm publish` + npmTag.map(($) => ' "--tag=' + $ + '"').join("")
   );
@@ -138,6 +143,14 @@ async function getReleaseTags() {
 console.log(`  pwd: ${process.cwd()}`);
 
 const run = async () => {
+  const npmToken = core.getInput("npmToken");
+
+  if (!npmToken) {
+    throw new Error("Missing data.npmToken in oddish-action configuration");
+  }
+
+  fs.writeFileSync("~/.npmrc", `//registry.npmjs.org/:_authToken=${npmToken}`);
+
   let branch =
     process.env.CIRCLE_BRANCH ||
     process.env.BRANCH_NAME ||
@@ -146,18 +159,20 @@ const run = async () => {
 
   let npmTag: string | null = null;
 
-  let gitTag: string | null =
-    process.env.CIRCLE_TAG || process.env.TRAVIS_TAG || null;
+  let gitTag: string | null = null;
+
+  if (github.context.ref.startsWith("refs/tags/")) {
+    gitTag = github.context.ref.replace(/^refs\/tags\//, "");
+  }
 
   let newVersion: string | null = null;
 
   let linkLatest = false;
 
+  console.log(`  cwd: ${process.cwd()}`);
   console.log(`  branch: ${branch}`);
   console.log(`  gitTag: ${gitTag}`);
   console.log(`  commit: ${commitHash}`);
-
-  
 
   // Travis keeps the branch name in the tags' builds
   if (gitTag) {
@@ -230,16 +245,22 @@ const run = async () => {
       if (!tags.latest || semver.gte(newVersion, tags.latest)) {
         const pkgName = (await execute(`npm info . name`)).trim();
         await execute(`npm dist-tag add ${pkgName}@${newVersion} latest`);
+        core.setOutput("latest", "true");
+      } else {
+        core.setOutput("latest", "false");
       }
     } catch (e) {
       console.error(e);
     }
+  } else {
+    core.setOutput("latest", "false");
   }
 
   await execute(`npm info . dist-tags --json`);
 };
 
 run().catch((e) => {
+  core.setFailed(e.message);
   console.error("Error:");
   console.error(e);
   process.exit(1);
