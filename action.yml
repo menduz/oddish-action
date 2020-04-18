@@ -5,7 +5,7 @@ branding:
 description: 'Deploy your NPM package using oddish directly from GitHub'
 runs:
   using: 'node12'
-  main: 'oddish.js'
+  main: 'dist/index.js'
 inputs:
   npmToken:
     description: "Your NPM Token"
