@@ -1,12 +1,23 @@
-name: 'Deploy to NPM with oddish'
+name: "Deploy to NPM with oddish"
 branding:
-  icon: 'package'
-  color: 'red'
-description: 'Deploy your NPM package using oddish directly from GitHub'
+  icon: "package"
+  color: "red"
+description: "Deploy your NPM package using oddish directly from GitHub"
 runs:
-  using: 'node12'
-  main: 'dist/index.js'
+  using: "node12"
+  main: "dist/index.js"
+outputs:
+  version:
+    description: published version
+  latest:
+    description: was the @latest tag published?
+  tags:
+    description: published tags
 inputs:
-  npmToken:
-    description: "Your NPM Token"
-    required: true
+  always-auth:
+    description: "Set always-auth in npmrc"
+    default: "false"
+  registry-url:
+    description: "Optional registry to set up for auth. Will set the registry in a project level .npmrc and .yarnrc file, and set up auth to read in from env.NODE_AUTH_TOKEN"
+  scope:
+    description: "Optional scope for authenticating against scoped registries"
