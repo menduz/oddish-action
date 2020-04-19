@@ -14,11 +14,17 @@ outputs:
   tags:
     description: published tags
 inputs:
+  cwd:
+    description: "Working directory"
+    required: false
   always-auth:
     description: "Set always-auth in npmrc"
     default: "false"
+    required: false
   registry-url:
     description: "Optional registry to set up for auth. Will set the registry in a project level .npmrc and .yarnrc file, and set up auth to read in from env.NODE_AUTH_TOKEN"
     default: "https://registry.npmjs.org"
+    required: false
   scope:
     description: "Optional scope for authenticating against scoped registries"
+    required: false
