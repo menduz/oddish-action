@@ -33,7 +33,7 @@ jobs:
       - run: npm run build
 
       - name: Publish
-        uses: menduz/oddish-action@2.0.0
+        uses: menduz/oddish-action@2.0.1
         with:
           ### Working directory to publish
           # cwd: "./packages/package-a"
