@@ -22,7 +22,7 @@ jobs:
       - run: npm run build
 
       - name: Publish
-        uses: menduz/oddish-action@1.0.0
-        with:
-          npmToken: ${{ secrets.NPM_TOKEN }}
+        uses: menduz/oddish-action@2.0.0
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
