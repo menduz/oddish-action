@@ -30,9 +30,13 @@ const time = new Date()
 
 console.log(`> oddish`);
 
-function configAuthentication(registryUrl: string, alwaysAuth: string) {
+function configAuthentication(
+  registryUrl: string,
+  alwaysAuth: string,
+  workingDirectory: string
+) {
   const npmrc: string = resolve(
-    process.env["RUNNER_TEMP"] || process.cwd(),
+    process.env["RUNNER_TEMP"] || workingDirectory,
     ".npmrc"
   );
 
@@ -118,8 +122,8 @@ async function execute(
   });
 }
 
-async function getBranch(): Promise<string> {
-  return git.branch(process.cwd()) as any;
+async function getBranch(workingDirectory: string): Promise<string> {
+  return git.branch(workingDirectory) as any;
 }
 
 async function setVersion(
@@ -146,7 +150,7 @@ async function publish(
 
 async function getVersion(workingDirectory: string) {
   const json = JSON.parse(
-    fs.readFileSync(resolve(workingDirectory, "package.json"), "utf8")
+    fs.readFileSync(workingDirectory + "/package.json", "utf8")
   );
 
   const pkgJsonVersion = json.version;
@@ -160,8 +164,8 @@ async function getVersion(workingDirectory: string) {
   return `${version.major}.${version.minor}.${version.patch}`;
 }
 
-function snapshotize(value: string) {
-  const commit = git.short(process.cwd());
+function snapshotize(value: string, workingDirectory: string) {
+  const commit = git.short(workingDirectory);
 
   if (!commit) {
     throw new Error("Unable to get git commit");
@@ -174,7 +178,10 @@ async function getSnapshotVersion(
   workingDirectory: string,
   registryUrl: string
 ) {
-  let nextVersion = snapshotize(await getVersion(workingDirectory));
+  let nextVersion = snapshotize(
+    await getVersion(workingDirectory),
+    workingDirectory
+  );
 
   const versions = await getReleaseTags(workingDirectory, registryUrl);
 
@@ -184,14 +191,20 @@ async function getSnapshotVersion(
     console.log(
       `! @latest(${versions.latest}) > ${nextVersion}. Incrementing patch.`
     );
-    nextVersion = snapshotize(semver.inc(versions.latest, "patch") as string);
+    nextVersion = snapshotize(
+      semver.inc(versions.latest, "patch") as string,
+      workingDirectory
+    );
   }
 
   if (versions.next && semver.lt(nextVersion, versions.next)) {
     console.log(
       `! @next(${versions.latest}) > ${nextVersion}. Incrementing patch.`
     );
-    nextVersion = snapshotize(semver.inc(versions.next, "patch") as string);
+    nextVersion = snapshotize(
+      semver.inc(versions.next, "patch") as string,
+      workingDirectory
+    );
   }
 
   return nextVersion;
@@ -200,7 +213,7 @@ async function getSnapshotVersion(
 async function getReleaseTags(workingDirectory: string, registry: string) {
   try {
     const json = JSON.parse(
-      fs.readFileSync(resolve(workingDirectory, "package.json"), "utf8")
+      fs.readFileSync(workingDirectory + "/package.json", "utf8")
     );
 
     const versions = await fetch(
@@ -218,10 +231,15 @@ async function getReleaseTags(workingDirectory: string, registry: string) {
 }
 
 const run = async () => {
-  const registryUrl: string = core.getInput("registry-url") || "https://registry.npmjs.org";
-  const workingDirectory: string = resolve(
-    core.getInput("cwd") || process.cwd()
-  );
+  const registryUrl: string =
+    core.getInput("registry-url") || "https://registry.npmjs.org";
+
+  let workingDirectory: string = resolve(core.getInput("cwd") || process.cwd());
+
+  if (workingDirectory.endsWith("/")) {
+    workingDirectory.replace(/\/+$/, "");
+  }
+
   const alwaysAuth: string = core.getInput("always-auth") || "false";
 
   if (!process.env.NODE_AUTH_TOKEN) {
@@ -229,14 +247,14 @@ const run = async () => {
   }
 
   if (process.env.NODE_AUTH_TOKEN || registryUrl) {
-    configAuthentication(registryUrl, alwaysAuth);
+    configAuthentication(registryUrl, alwaysAuth, workingDirectory);
   }
 
   let branch =
     process.env.CIRCLE_BRANCH ||
     process.env.BRANCH_NAME ||
     process.env.TRAVIS_BRANCH ||
-    (await getBranch());
+    (await getBranch(workingDirectory));
 
   let npmTag: string | null = null;
 
