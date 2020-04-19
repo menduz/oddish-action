@@ -1,5 +1,14 @@
 # Oddish GitHub Action
 
+## How it works
+
+`oddish` will:
+
+    Publish in @latest on semver tags, only if the new version is greater to the latest published.
+    Publish in @tag-[GIT_TAG] on non-semver tags.
+    Publish in @rc all relase candidates (extracted from the tag).
+    Publish in @next every master build.
+
 ## Usage
 
 Add `oddish-action` to the workflow for your NPM package. The below example will publish your application on pushes to the `master` branch:
