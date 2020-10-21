@@ -306,11 +306,11 @@ const run = async () => {
   console.log(`    tag: ${npmTag || "ci"}\n`);
 
   if (!gitTag) {
-    if (branch === "master") {
+    if (branch === "master" || branch == "main") {
       npmTag = "next";
     } else {
       console.log(
-        `! canceling automatic npm publish. It can only be made in master branches or tags`
+        `! canceling automatic npm publish. It can only be made in main/master branches or tags`
       );
       process.exit(0);
     }

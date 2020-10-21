@@ -7,13 +7,13 @@
     Publish in @latest on semver tags, only if the new version is greater to the latest published.
     Publish in @tag-[GIT_TAG] on non-semver tags.
     Publish in @rc all relase candidates (extracted from the tag).
-    Publish in @next every master build.
+    Publish in @next every main or master build.
 
 This publishing method ignores completely the `version` field in package.json files, it publishes based on branches, tags and published versions.
 
 ## Usage
 
-Add `oddish-action` to the workflow for your NPM package. The below example will publish your application on pushes to the `master` branch:
+Add `oddish-action` to the workflow for your NPM package. The below example will publish your application on pushes to the `main/master` branch:
 
 ```yaml
 name: Deploy
