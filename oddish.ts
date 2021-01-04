@@ -93,12 +93,12 @@ function writeRegistryToFile(registryUrl: string, fileLocation: string, alwaysAu
 
 async function execute(command: string, workingDirectory: string): Promise<string> {
   return core.group(
-    `> ${command}`,
+    `${command}`,
     () =>
       new Promise<string>((onSuccess, onError) => {
         exec(command, { cwd: workingDirectory }, (error, stdout, stderr) => {
-          stdout.trim().length && console.log("  " + stdout.replace(/\n/g, "\n  "));
-          stderr.trim().length && core.error("! " + stderr.replace(/\n/g, "\n  "));
+          stdout.trim().length && console.log("stdout:\n" + stdout.replace(/\n/g, "\n  "));
+          stderr.trim().length && console.error("stderr:\n" + stderr.replace(/\n/g, "\n  "));
 
           if (error) {
             onError(stderr);
@@ -169,15 +169,15 @@ async function getSnapshotVersion(workingDirectory: string, registryUrl: string)
 
   const versions = await getReleaseTags(workingDirectory, registryUrl);
 
-  console.log("  published versions: " + JSON.stringify(versions));
+  core.info("  published versions: " + JSON.stringify(versions));
 
   if (versions.latest && semver.lt(nextVersion, versions.latest)) {
-    console.log(`! @latest(${versions.latest}) > ${nextVersion}. Incrementing patch.`);
+    core.info(`! @latest(${versions.latest}) > ${nextVersion}. Incrementing patch.`);
     nextVersion = snapshotize(semver.inc(versions.latest, "patch") as string, workingDirectory);
   }
 
   if (versions.next && semver.lt(nextVersion, versions.next)) {
-    console.log(`! @next(${versions.latest}) > ${nextVersion}. Incrementing patch.`);
+    core.info(`! @next(${versions.latest}) > ${nextVersion}. Incrementing patch.`);
     nextVersion = snapshotize(semver.inc(versions.next, "patch") as string, workingDirectory);
   }
 
@@ -271,7 +271,8 @@ const run = async () => {
   }
 
   console.log(`  package.json#version: ${await getVersion(workingDirectory)}`);
-  console.log(`  publishing:\n    version: ${newVersion}`);
+  console.log(`  publishing:`);
+  console.log(`    version: ${newVersion}`);
   console.log(`    tag: ${npmTag || "ci"}\n`);
 
   if (!gitTag) {
