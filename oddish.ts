@@ -30,15 +30,8 @@ const time = new Date()
 
 console.log(`> oddish`);
 
-function configAuthentication(
-  registryUrl: string,
-  alwaysAuth: string,
-  workingDirectory: string
-) {
-  const npmrc: string = resolve(
-    process.env["RUNNER_TEMP"] || workingDirectory,
-    ".npmrc"
-  );
+function configAuthentication(registryUrl: string, alwaysAuth: string, workingDirectory: string) {
+  const npmrc: string = resolve(process.env["RUNNER_TEMP"] || workingDirectory, ".npmrc");
 
   if (!registryUrl.endsWith("/")) {
     registryUrl += "/";
@@ -47,11 +40,7 @@ function configAuthentication(
   writeRegistryToFile(registryUrl, npmrc, alwaysAuth);
 }
 
-function writeRegistryToFile(
-  registryUrl: string,
-  fileLocation: string,
-  alwaysAuth: string
-) {
+function writeRegistryToFile(registryUrl: string, fileLocation: string, alwaysAuth: string) {
   let scope: string = core.getInput("scope");
   if (!scope && registryUrl.indexOf("npm.pkg.github.com") > -1) {
     scope = github.context.repo.owner;
@@ -102,34 +91,30 @@ function writeRegistryToFile(
  *
  */
 
-async function execute(
-  command: string,
-  workingDirectory: string
-): Promise<string> {
-  return new Promise<string>((onSuccess, onError) => {
-    console.log(`> ${command}`);
-    exec(command, { cwd: workingDirectory }, (error, stdout, stderr) => {
-      stdout.trim().length && console.log("  " + stdout.replace(/\n/g, "\n  "));
-      stderr.trim().length &&
-        console.error("! " + stderr.replace(/\n/g, "\n  "));
+async function execute(command: string, workingDirectory: string): Promise<string> {
+  return core.group(
+    `> ${command}`,
+    () =>
+      new Promise<string>((onSuccess, onError) => {
+        exec(command, { cwd: workingDirectory }, (error, stdout, stderr) => {
+          stdout.trim().length && console.log("  " + stdout.replace(/\n/g, "\n  "));
+          stderr.trim().length && core.error("! " + stderr.replace(/\n/g, "\n  "));
 
-      if (error) {
-        onError(stderr);
-      } else {
-        onSuccess(stdout);
-      }
-    });
-  });
+          if (error) {
+            onError(stderr);
+          } else {
+            onSuccess(stdout);
+          }
+        });
+      })
+  );
 }
 
 async function getBranch(workingDirectory: string): Promise<string> {
   return git.branch(workingDirectory) as any;
 }
 
-async function setVersion(
-  newVersion: string,
-  workingDirectory: string
-): Promise<string> {
+async function setVersion(newVersion: string, workingDirectory: string): Promise<string> {
   core.setOutput("version", newVersion);
   return execute(
     `npm version "${newVersion}" --force --no-git-tag-version --allow-same-version`,
@@ -137,21 +122,26 @@ async function setVersion(
   );
 }
 
-async function publish(
-  npmTag: string[],
-  workingDirectory: string
-): Promise<string> {
-  core.setOutput("tags", npmTag.join(","));
-  return execute(
-    `npm publish` + npmTag.map(($) => ' "--tag=' + $ + '"').join(""),
-    workingDirectory
-  );
+async function publish(npmTags: string[], workingDirectory: string): Promise<string> {
+  core.setOutput("tags", npmTags.join(","));
+
+  const args: string[] = [];
+
+  const access = core.getInput("access", { required: false });
+
+  if (access) {
+    args.push("--access", access);
+  }
+
+  for (let tag of npmTags) {
+    args.push("--tag", JSON.stringify(tag));
+  }
+
+  return execute(`npm publish ` + args.join(" "), workingDirectory);
 }
 
 async function getVersion(workingDirectory: string) {
-  const json = JSON.parse(
-    fs.readFileSync(workingDirectory + "/package.json", "utf8")
-  );
+  const json = JSON.parse(fs.readFileSync(workingDirectory + "/package.json", "utf8"));
 
   const pkgJsonVersion = json.version;
 
@@ -174,37 +164,21 @@ function snapshotize(value: string, workingDirectory: string) {
   return value + "-" + time + ".commit-" + commit;
 }
 
-async function getSnapshotVersion(
-  workingDirectory: string,
-  registryUrl: string
-) {
-  let nextVersion = snapshotize(
-    await getVersion(workingDirectory),
-    workingDirectory
-  );
+async function getSnapshotVersion(workingDirectory: string, registryUrl: string) {
+  let nextVersion = snapshotize(await getVersion(workingDirectory), workingDirectory);
 
   const versions = await getReleaseTags(workingDirectory, registryUrl);
 
   console.log("  published versions: " + JSON.stringify(versions));
 
   if (versions.latest && semver.lt(nextVersion, versions.latest)) {
-    console.log(
-      `! @latest(${versions.latest}) > ${nextVersion}. Incrementing patch.`
-    );
-    nextVersion = snapshotize(
-      semver.inc(versions.latest, "patch") as string,
-      workingDirectory
-    );
+    console.log(`! @latest(${versions.latest}) > ${nextVersion}. Incrementing patch.`);
+    nextVersion = snapshotize(semver.inc(versions.latest, "patch") as string, workingDirectory);
   }
 
   if (versions.next && semver.lt(nextVersion, versions.next)) {
-    console.log(
-      `! @next(${versions.latest}) > ${nextVersion}. Incrementing patch.`
-    );
-    nextVersion = snapshotize(
-      semver.inc(versions.next, "patch") as string,
-      workingDirectory
-    );
+    console.log(`! @next(${versions.latest}) > ${nextVersion}. Incrementing patch.`);
+    nextVersion = snapshotize(semver.inc(versions.next, "patch") as string, workingDirectory);
   }
 
   return nextVersion;
@@ -212,13 +186,9 @@ async function getSnapshotVersion(
 
 async function getReleaseTags(workingDirectory: string, registry: string) {
   try {
-    const json = JSON.parse(
-      fs.readFileSync(workingDirectory + "/package.json", "utf8")
-    );
+    const json = JSON.parse(fs.readFileSync(workingDirectory + "/package.json", "utf8"));
 
-    const versions = await fetch(
-      `${registry}/-/package/${json.name}/dist-tags`
-    );
+    const versions = await fetch(`${registry}/-/package/${json.name}/dist-tags`);
 
     if (versions.ok) {
       return await versions.json();
@@ -231,8 +201,7 @@ async function getReleaseTags(workingDirectory: string, registry: string) {
 }
 
 const run = async () => {
-  const registryUrl: string =
-    core.getInput("registry-url") || "https://registry.npmjs.org";
+  const registryUrl: string = core.getInput("registry-url") || "https://registry.npmjs.org";
 
   let workingDirectory: string = resolve(core.getInput("cwd") || process.cwd());
 
@@ -243,7 +212,7 @@ const run = async () => {
   const alwaysAuth: string = core.getInput("always-auth") || "false";
 
   if (!process.env.NODE_AUTH_TOKEN) {
-    console.log(`! warn: variable NODE_AUTH_TOKEN is not set`);
+    core.warning(`! warn: variable NODE_AUTH_TOKEN is not set`);
   }
 
   if (process.env.NODE_AUTH_TOKEN || registryUrl) {
@@ -293,7 +262,7 @@ const run = async () => {
         newVersion = await getSnapshotVersion(workingDirectory, registryUrl);
       }
     } else {
-      console.log(`invalid semver version: ${gitTag}`);
+      core.warning(`invalid semver version: ${gitTag}`);
       npmTag = "tag-" + gitTag;
       newVersion = await getSnapshotVersion(workingDirectory, registryUrl);
     }
@@ -309,7 +278,7 @@ const run = async () => {
     if (branch === "master" || branch == "main") {
       npmTag = "next";
     } else {
-      console.log(
+      core.info(
         `! canceling automatic npm publish. It can only be made in main/master branches or tags`
       );
       process.exit(0);
@@ -320,7 +289,7 @@ const run = async () => {
 
   if (npmTag && npmTag in tags) {
     if (semver.gte(tags[npmTag], newVersion)) {
-      console.log(
+      core.error(
         `! This version will be not published as "${npmTag}" because a newer version is set. Publishing as "ci"\n`
       );
       npmTag = null;
@@ -339,20 +308,15 @@ const run = async () => {
   if (linkLatest) {
     try {
       if (!tags.latest || semver.gte(newVersion, tags.latest)) {
-        const pkgName = (
-          await execute(`npm info . name`, workingDirectory)
-        ).trim();
-        await execute(
-          `npm dist-tag add ${pkgName}@${newVersion} latest`,
-          workingDirectory
-        );
+        const pkgName = (await execute(`npm info . name`, workingDirectory)).trim();
+        await execute(`npm dist-tag add ${pkgName}@${newVersion} latest`, workingDirectory);
         console.log(`  publishing:\n    version: ${newVersion}`);
         core.setOutput("latest", "true");
       } else {
         core.setOutput("latest", "false");
       }
     } catch (e) {
-      console.error(e);
+      core.error(e);
     }
   } else {
     core.setOutput("latest", "false");
@@ -363,7 +327,6 @@ const run = async () => {
 
 run().catch((e) => {
   core.setFailed(e.message);
-  console.error("Error:");
-  console.error(e);
+  core.error(e);
   process.exit(1);
 });

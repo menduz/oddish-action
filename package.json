@@ -13,6 +13,10 @@
   "keywords": [],
   "author": "",
   "license": "Apache-2.0",
+  "prettier": {
+    "printWidth": 100,
+    "semi": true
+  },
   "bugs": {
     "url": "https://github.com/menduz/oddish-action/issues"
   },
