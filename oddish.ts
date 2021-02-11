@@ -143,7 +143,8 @@ async function publish(npmTags: string[], workingDirectory: string): Promise<str
 async function getVersion(workingDirectory: string) {
   const json = JSON.parse(fs.readFileSync(workingDirectory + "/package.json", "utf8"));
 
-  const pkgJsonVersion = json.version;
+  let pkgJsonVersion = json.version;
+  if (!pkgJsonVersion) pkgJsonVersion = "0.0.0";
 
   const version = semver.parse(pkgJsonVersion.trim());
 
