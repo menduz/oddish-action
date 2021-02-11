@@ -44,7 +44,8 @@ jobs:
           # registry-url: "https://registry.npmjs.org"
 
           ### Optional scope for authenticating against scoped registries
-          # scope: arduz
+          # scope: dcl
+          # access: public
 
           ### Set always-auth in npmrc
           # always-auth: true
