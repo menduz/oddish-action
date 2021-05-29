@@ -162,7 +162,11 @@ function snapshotize(value: string, workingDirectory: string) {
     throw new Error("Unable to get git commit");
   }
 
-  return value + "-" + time + ".commit-" + commit;
+  if (core.getBooleanInput("deterministic-snapshot")) {
+    return value + "-" + github.context.runId + ".commit-" + commit;
+  } else {
+    return value + "-" + time + ".commit-" + commit;
+  }
 }
 
 async function getSnapshotVersion(workingDirectory: string, registryUrl: string) {
@@ -300,6 +304,12 @@ const run = async () => {
 
   await setCommitHash();
   await setVersion(newVersion, workingDirectory);
+
+  // skip publishing
+  if (core.getBooleanInput("only-update-versions")) {
+    core.info("> Skipping publishing.");
+    return;
+  }
 
   if (npmTag) {
     await publish([npmTag], workingDirectory);
