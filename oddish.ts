@@ -278,7 +278,6 @@ const run = async () => {
   console.log(`  package.json#version: ${await getVersion(workingDirectory)}`);
   console.log(`  publishing:`);
   console.log(`    version: ${newVersion}`);
-  console.log(`    tag: ${npmTag || "ci"}\n`);
 
   await setCommitHash();
   await setVersion(newVersion, workingDirectory);
@@ -294,12 +293,6 @@ const run = async () => {
     }
   }
 
-  // skip publishing
-  if (core.getBooleanInput("only-update-versions")) {
-    core.info("> Skipping publishing.");
-    return;
-  }
-
   const tags = await getReleaseTags(workingDirectory, registryUrl);
 
   if (npmTag && npmTag in tags) {
@@ -309,6 +302,14 @@ const run = async () => {
       );
       npmTag = null;
     }
+  }
+
+  console.log(`    tag: ${npmTag || "ci"}\n`);
+
+  // skip publishing
+  if (core.getBooleanInput("only-update-versions")) {
+    core.info("> Skipping publishing.");
+    return;
   }
 
   if (npmTag) {
