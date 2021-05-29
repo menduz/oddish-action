@@ -2875,6 +2875,8 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
     console.log(`  publishing:`);
     console.log(`    version: ${newVersion}`);
     console.log(`    tag: ${npmTag || "ci"}\n`);
+    yield setCommitHash();
+    yield setVersion(newVersion, workingDirectory);
     if (!gitTag) {
         if (branch === "master" || branch == "main") {
             npmTag = "next";
@@ -2884,19 +2886,17 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
             process.exit(0);
         }
     }
-    const tags = yield getReleaseTags(workingDirectory, registryUrl);
-    if (npmTag && npmTag in tags) {
-        if (semver.gte(tags[npmTag], newVersion)) {
-            core.error(`! This version will be not published as "${npmTag}" because a newer version is set. Publishing as "ci"\n`);
-            npmTag = null;
-        }
-    }
-    yield setCommitHash();
-    yield setVersion(newVersion, workingDirectory);
     // skip publishing
     if (core.getBooleanInput("only-update-versions")) {
         core.info("> Skipping publishing.");
         return;
+    }
+    const tags = yield getReleaseTags(workingDirectory, registryUrl);
+    if (npmTag && npmTag in tags) {
+        if (semver.gte(tags[npmTag], newVersion)) {
+            core.error(`! This version will be not published as "${npmTag}" because a ${tags[npmTag]} (${npmTag}) > ${newVersion} (current version). Publishing as "ci"\n`);
+            npmTag = null;
+        }
     }
     if (npmTag) {
         yield publish([npmTag], workingDirectory);

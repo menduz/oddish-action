@@ -280,6 +280,9 @@ const run = async () => {
   console.log(`    version: ${newVersion}`);
   console.log(`    tag: ${npmTag || "ci"}\n`);
 
+  await setCommitHash();
+  await setVersion(newVersion, workingDirectory);
+
   if (!gitTag) {
     if (branch === "master" || branch == "main") {
       npmTag = "next";
@@ -291,24 +294,21 @@ const run = async () => {
     }
   }
 
+  // skip publishing
+  if (core.getBooleanInput("only-update-versions")) {
+    core.info("> Skipping publishing.");
+    return;
+  }
+
   const tags = await getReleaseTags(workingDirectory, registryUrl);
 
   if (npmTag && npmTag in tags) {
     if (semver.gte(tags[npmTag], newVersion)) {
       core.error(
-        `! This version will be not published as "${npmTag}" because a newer version is set. Publishing as "ci"\n`
+        `! This version will be not published as "${npmTag}" because a ${tags[npmTag]} (${npmTag}) > ${newVersion} (current version). Publishing as "ci"\n`
       );
       npmTag = null;
     }
-  }
-
-  await setCommitHash();
-  await setVersion(newVersion, workingDirectory);
-
-  // skip publishing
-  if (core.getBooleanInput("only-update-versions")) {
-    core.info("> Skipping publishing.");
-    return;
   }
 
   if (npmTag) {
