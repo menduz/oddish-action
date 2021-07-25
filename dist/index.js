@@ -2773,7 +2773,7 @@ function snapshotize(value, workingDirectory) {
     if (!commit) {
         throw new Error("Unable to get git commit");
     }
-    if (core.getBooleanInput("deterministic-snapshot")) {
+    if (core.getInput("deterministic-snapshot") && core.getBooleanInput("deterministic-snapshot")) {
         return value + "-" + github.context.runId + ".commit-" + commit;
     }
     else {
@@ -2894,7 +2894,7 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
     }
     console.log(`    tag: ${npmTag || "ci"}\n`);
     // skip publishing
-    if (core.getBooleanInput("only-update-versions")) {
+    if (core.getInput("only-update-versions") && core.getBooleanInput("only-update-versions")) {
         core.info("> Skipping publishing.");
         return;
     }
@@ -8454,7 +8454,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getState = exports.saveState = exports.group = exports.endGroup = exports.startGroup = exports.info = exports.warning = exports.error = exports.debug = exports.isDebug = exports.setFailed = exports.setCommandEcho = exports.setOutput = exports.getBooleanInput = exports.getInput = exports.addPath = exports.setSecret = exports.exportVariable = exports.ExitCode = void 0;
+exports.getState = exports.saveState = exports.group = exports.endGroup = exports.startGroup = exports.info = exports.warning = exports.error = exports.debug = exports.isDebug = exports.setFailed = exports.setCommandEcho = exports.setOutput = exports.getBooleanInput = exports.getMultilineInput = exports.getInput = exports.addPath = exports.setSecret = exports.exportVariable = exports.ExitCode = void 0;
 const command_1 = __webpack_require__(431);
 const file_command_1 = __webpack_require__(102);
 const utils_1 = __webpack_require__(82);
@@ -8540,6 +8540,21 @@ function getInput(name, options) {
     return val.trim();
 }
 exports.getInput = getInput;
+/**
+ * Gets the values of an multiline input.  Each value is also trimmed.
+ *
+ * @param     name     name of the input to get
+ * @param     options  optional. See InputOptions.
+ * @returns   string[]
+ *
+ */
+function getMultilineInput(name, options) {
+    const inputs = getInput(name, options)
+        .split('\n')
+        .filter(x => x !== '');
+    return inputs;
+}
+exports.getMultilineInput = getMultilineInput;
 /**
  * Gets the input value of the boolean type in the YAML 1.2 "core schema" specification.
  * Support boolean input list: `true | True | TRUE | false | False | FALSE` .

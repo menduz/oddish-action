@@ -162,7 +162,7 @@ function snapshotize(value: string, workingDirectory: string) {
     throw new Error("Unable to get git commit");
   }
 
-  if (core.getBooleanInput("deterministic-snapshot")) {
+  if (core.getInput("deterministic-snapshot") && core.getBooleanInput("deterministic-snapshot")) {
     return value + "-" + github.context.runId + ".commit-" + commit;
   } else {
     return value + "-" + time + ".commit-" + commit;
@@ -307,7 +307,7 @@ const run = async () => {
   console.log(`    tag: ${npmTag || "ci"}\n`);
 
   // skip publishing
-  if (core.getBooleanInput("only-update-versions")) {
+  if (core.getInput("only-update-versions") && core.getBooleanInput("only-update-versions")) {
     core.info("> Skipping publishing.");
     return;
   }
