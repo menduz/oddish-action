@@ -2647,11 +2647,11 @@ const os = __webpack_require__(87);
 const child_process_2 = __webpack_require__(129);
 const path_1 = __webpack_require__(622);
 const commitHash = child_process_2.execSync("git rev-parse HEAD").toString().trim();
-function setCommitHash() {
+function setCommitHash(cwd) {
     return __awaiter(this, void 0, void 0, function* () {
-        const packageJson = JSON.parse(fs.readFileSync("package.json").toString());
+        const packageJson = JSON.parse(fs.readFileSync(path_1.resolve("package.json", cwd)).toString());
         packageJson.commit = commitHash;
-        fs.writeFileSync("package.json", JSON.stringify(packageJson, null, 2));
+        fs.writeFileSync(path_1.resolve("package.json", cwd), JSON.stringify(packageJson, null, 2));
     });
 }
 const time = new Date()
@@ -2874,7 +2874,7 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
     console.log(`  package.json#version: ${yield getVersion(workingDirectory)}`);
     console.log(`  publishing:`);
     console.log(`    version: ${newVersion}`);
-    yield setCommitHash();
+    yield setCommitHash(workingDirectory);
     yield setVersion(newVersion, workingDirectory);
     if (!gitTag) {
         if (branch === "master" || branch == "main") {

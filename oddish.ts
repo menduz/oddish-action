@@ -16,10 +16,10 @@ import { resolve } from "path";
 
 const commitHash = execSync("git rev-parse HEAD").toString().trim();
 
-async function setCommitHash() {
-  const packageJson = JSON.parse(fs.readFileSync("package.json").toString());
+async function setCommitHash(cwd: string) {
+  const packageJson = JSON.parse(fs.readFileSync(resolve("package.json", cwd)).toString());
   packageJson.commit = commitHash;
-  fs.writeFileSync("package.json", JSON.stringify(packageJson, null, 2));
+  fs.writeFileSync(resolve("package.json", cwd), JSON.stringify(packageJson, null, 2));
 }
 
 const time = new Date()
@@ -279,7 +279,7 @@ const run = async () => {
   console.log(`  publishing:`);
   console.log(`    version: ${newVersion}`);
 
-  await setCommitHash();
+  await setCommitHash(workingDirectory);
   await setVersion(newVersion, workingDirectory);
 
   if (!gitTag) {
