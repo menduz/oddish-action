@@ -2647,11 +2647,11 @@ const os = __webpack_require__(87);
 const child_process_2 = __webpack_require__(129);
 const path_1 = __webpack_require__(622);
 const commitHash = child_process_2.execSync("git rev-parse HEAD").toString().trim();
-function setCommitHash(cwd) {
+function setCommitHash(workingDirectory) {
     return __awaiter(this, void 0, void 0, function* () {
-        const packageJson = JSON.parse(fs.readFileSync(path_1.resolve("package.json", cwd)).toString());
+        const packageJson = JSON.parse(fs.readFileSync(workingDirectory + "/package.json").toString());
         packageJson.commit = commitHash;
-        fs.writeFileSync(path_1.resolve("package.json", cwd), JSON.stringify(packageJson, null, 2));
+        fs.writeFileSync(workingDirectory + "/package.json", JSON.stringify(packageJson, null, 2));
     });
 }
 const time = new Date()
