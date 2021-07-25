@@ -29,6 +29,14 @@ inputs:
     description: "'restricted' or 'public' to set the scoped package visibility"
     default: ""
     required: false
+  deterministic-snapshot:
+    description: "use runId instead of Time for the snapshot, to get deterministic snapshots"
+    default: ""
+    required: false
+  only-update-versions:
+    description: "skips publishing, updates the version and commit in package.json"
+    default: ""
+    required: false
   scope:
     description: "Optional scope for authenticating against scoped registries"
     required: false

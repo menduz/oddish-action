@@ -47,6 +47,12 @@ jobs:
           # scope: dcl
           # access: public
 
+          ## use action runId instead of current date to generate snapshot numbers
+          # deterministic-snapshot: false
+
+          ## Only update package.json, skip publishing
+          # only-update-versions: false
+
           ### Set always-auth in npmrc
           # always-auth: true
         env:

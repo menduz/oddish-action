@@ -162,7 +162,11 @@ function snapshotize(value: string, workingDirectory: string) {
     throw new Error("Unable to get git commit");
   }
 
-  return value + "-" + time + ".commit-" + commit;
+  if (core.getBooleanInput("deterministic-snapshot")) {
+    return value + "-" + github.context.runId + ".commit-" + commit;
+  } else {
+    return value + "-" + time + ".commit-" + commit;
+  }
 }
 
 async function getSnapshotVersion(workingDirectory: string, registryUrl: string) {
@@ -274,7 +278,9 @@ const run = async () => {
   console.log(`  package.json#version: ${await getVersion(workingDirectory)}`);
   console.log(`  publishing:`);
   console.log(`    version: ${newVersion}`);
-  console.log(`    tag: ${npmTag || "ci"}\n`);
+
+  await setCommitHash();
+  await setVersion(newVersion, workingDirectory);
 
   if (!gitTag) {
     if (branch === "master" || branch == "main") {
@@ -292,14 +298,19 @@ const run = async () => {
   if (npmTag && npmTag in tags) {
     if (semver.gte(tags[npmTag], newVersion)) {
       core.error(
-        `! This version will be not published as "${npmTag}" because a newer version is set. Publishing as "ci"\n`
+        `! This version will be not published as "${npmTag}" because a ${tags[npmTag]} (${npmTag}) > ${newVersion} (current version). Publishing as "ci"\n`
       );
       npmTag = null;
     }
   }
 
-  await setCommitHash();
-  await setVersion(newVersion, workingDirectory);
+  console.log(`    tag: ${npmTag || "ci"}\n`);
+
+  // skip publishing
+  if (core.getBooleanInput("only-update-versions")) {
+    core.info("> Skipping publishing.");
+    return;
+  }
 
   if (npmTag) {
     await publish([npmTag], workingDirectory);
