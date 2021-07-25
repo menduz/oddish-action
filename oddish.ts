@@ -16,10 +16,10 @@ import { resolve } from "path";
 
 const commitHash = execSync("git rev-parse HEAD").toString().trim();
 
-async function setCommitHash(cwd: string) {
-  const packageJson = JSON.parse(fs.readFileSync(resolve("package.json", cwd)).toString());
+async function setCommitHash(workingDirectory: string) {
+  const packageJson = JSON.parse(fs.readFileSync(workingDirectory + "/package.json").toString());
   packageJson.commit = commitHash;
-  fs.writeFileSync(resolve("package.json", cwd), JSON.stringify(packageJson, null, 2));
+  fs.writeFileSync(workingDirectory + "/package.json", JSON.stringify(packageJson, null, 2));
 }
 
 const time = new Date()
