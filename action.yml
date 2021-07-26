@@ -51,12 +51,6 @@ inputs:
   s3-bucket-key-prefix:
     description: "Target s3 bucket key"
     required: false
-  s3-bucket-key-id:
-    description: "Target s3 bucket key"
-    required: false
-  s3-bucket-key-secret:
-    description: "Target s3 bucket key"
-    required: false
   scope:
     description: "Optional scope for authenticating against scoped registries"
     required: false

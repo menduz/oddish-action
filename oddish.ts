@@ -70,15 +70,11 @@ async function triggerPipeline(packageName: string, packageTag: string, packageV
 async function uploadTarToS3(workingDirectory: string) {
   const BUCKET = core.getInput("s3-bucket", { required: false });
   const BUCKET_KEY_PREFIX = core.getInput("s3-bucket-key-prefix", { required: false });
-  const AWS_CLIENT_ID = core.getInput("s3-bucket-key-id", { required: false });
-  const AWS_CLIENT_SECRET = core.getInput("s3-bucket-key-secret", { required: false });
 
   if (!BUCKET) return;
 
-  if (!AWS_CLIENT_ID || !AWS_CLIENT_SECRET || !BUCKET_KEY_PREFIX) {
-    core.warning(
-      "Skipping bucket publication, s3-bucket-key-id, s3-bucket-key-secret and s3-bucket-key-prefix are required"
-    );
+  if (!BUCKET_KEY_PREFIX) {
+    core.warning("Skipping bucket publication s3-bucket-key-prefix is required");
     return;
   }
 
@@ -90,8 +86,6 @@ async function uploadTarToS3(workingDirectory: string) {
 
       const s3 = new AWS.S3({
         signatureVersion: "v4",
-        accessKeyId: AWS_CLIENT_ID,
-        secretAccessKey: AWS_CLIENT_SECRET,
       });
 
       for (let file of packDetails) {
