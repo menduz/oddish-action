@@ -37,6 +37,14 @@ inputs:
     description: "skips publishing, updates the version and commit in package.json"
     default: ""
     required: false
+  gitlab-token:
+    description: "gitlab token to trigger pipelines"
+    default: ""
+    required: false
+  gitlab-pipeline-url:
+    description: "gitlab pipeline URL"
+    default: ""
+    required: false
   scope:
     description: "Optional scope for authenticating against scoped registries"
     required: false
