@@ -45,6 +45,12 @@ inputs:
     description: "gitlab pipeline URL"
     default: ""
     required: false
+  s3-bucket:
+    description: "Target s3 bucket"
+    required: false
+  s3-bucket-key-prefix:
+    description: "Target s3 bucket key"
+    required: false
   scope:
     description: "Optional scope for authenticating against scoped registries"
     required: false
