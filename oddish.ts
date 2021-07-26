@@ -50,6 +50,8 @@ async function triggerPipeline(packageName: string, packageTag: string, packageV
     body.append("variables[PACKAGE_DIST_TAG]", packageTag);
     body.append("variables[PACKAGE_VERSION]", packageVersion);
     body.append("variables[REGISTRY_URL]", registryUrl);
+    body.append("variables[REPO]", github.context.repo.repo);
+    body.append("variables[REPO_OWNER]", github.context.repo.owner);
     body.append("variables[COMMIT]", commitHash);
 
     try {
