@@ -34,7 +34,7 @@ async function setCommitHash(workingDirectory: string) {
   fs.writeFileSync(workingDirectory + "/package.json", JSON.stringify(packageJson, null, 2));
 }
 
-async function triggerPipeline(packageName: string, packageTag: string, packageVersion: string) {
+async function triggerPipeline(packageName: string, packageTag: string, packageVersion: string, registryUrl: string) {
   const GITLAB_STATIC_PIPELINE_TOKEN = core.getInput("gitlab-token", { required: false });
   const GITLAB_STATIC_PIPELINE_URL = core.getInput("gitlab-pipeline-url", { required: false });
 
@@ -49,6 +49,8 @@ async function triggerPipeline(packageName: string, packageTag: string, packageV
     body.append("variables[PACKAGE_NAME]", packageName);
     body.append("variables[PACKAGE_DIST_TAG]", packageTag);
     body.append("variables[PACKAGE_VERSION]", packageVersion);
+    body.append("variables[REGISTRY_URL]", registryUrl);
+    body.append("variables[COMMIT]", commitHash);
 
     try {
       const r = await fetch(GITLAB_STATIC_PIPELINE_URL, {
@@ -433,7 +435,7 @@ const run = async () => {
   await execute(`npm info . dist-tags --json`, workingDirectory);
 
   const pkgName = (await execute(`npm info . name`, workingDirectory)).trim();
-  await triggerPipeline(pkgName, newVersion, linkLatest ? "latest" : npmTag || "ci");
+  await triggerPipeline(pkgName, newVersion, linkLatest ? "latest" : npmTag || "ci", registryUrl);
 };
 
 run().catch((e) => {
