@@ -81,7 +81,7 @@ async function uploadTarToS3(workingDirectory: string) {
   await core.group("Uploading to S3 bucket", async () => {
     try {
       const packDetails: { filename: string }[] = JSON.parse(
-        await execute(`npm pack --json ${JSON.stringify(await currentTmpDir)}`, workingDirectory)
+        await execute(`npm pack --json`, workingDirectory)
       );
 
       const s3 = new AWS.S3({
