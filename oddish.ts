@@ -3,6 +3,8 @@
 // tslint:disable:no-console
 
 import core = require("@actions/core");
+import io = require("@actions/io");
+import artifact = require("@actions/artifact");
 import github = require("@actions/github");
 
 import { exec } from "child_process";
@@ -12,19 +14,9 @@ import fetch from "node-fetch";
 import semver = require("semver");
 import git = require("git-rev-sync");
 import fs = require("fs");
-import path = require("path");
 import os = require("os");
 import { execSync } from "child_process";
-import { resolve } from "path";
-import { tmpdir } from "os";
-
-const currentTmpDir = new Promise<string>((resolve) => {
-  fs.mkdtemp(path.join(tmpdir(), "foo-"), (err, folder) => {
-    if (err) throw err;
-    resolve(folder);
-    // Prints: /tmp/foo-itXde2
-  });
-});
+import { basename, resolve } from "path";
 
 const commitHash = execSync("git rev-parse HEAD").toString().trim();
 
@@ -34,7 +26,12 @@ async function setCommitHash(workingDirectory: string) {
   fs.writeFileSync(workingDirectory + "/package.json", JSON.stringify(packageJson, null, 2));
 }
 
-async function triggerPipeline(packageName: string, packageTag: string, packageVersion: string, registryUrl: string) {
+async function triggerPipeline(
+  packageName: string,
+  packageTag: string,
+  packageVersion: string,
+  registryUrl: string
+) {
   const GITLAB_STATIC_PIPELINE_TOKEN = core.getInput("gitlab-token", { required: false });
   const GITLAB_STATIC_PIPELINE_URL = core.getInput("gitlab-pipeline-url", { required: false });
 
@@ -71,7 +68,7 @@ async function triggerPipeline(packageName: string, packageTag: string, packageV
   });
 }
 
-async function uploadTarToS3(workingDirectory: string) {
+async function uploadTarToS3(localFile: string) {
   const BUCKET = core.getInput("s3-bucket", { required: false });
   const BUCKET_KEY_PREFIX = core.getInput("s3-bucket-key-prefix", { required: false });
 
@@ -82,38 +79,48 @@ async function uploadTarToS3(workingDirectory: string) {
     return;
   }
 
-  await core.group("Uploading to S3 bucket", async () => {
+  const s3 = new AWS.S3({
+    signatureVersion: "v4",
+  });
+
+  const key = (BUCKET_KEY_PREFIX + "/").replace(/^(\/)+/, "") + basename(localFile);
+  core.info(`Uploading ${localFile} to ${key}`);
+
+  await s3
+    .putObject({
+      Bucket: BUCKET,
+      Key: key,
+      Body: fs.createReadStream(localFile),
+      ContentType: "application/tar",
+      ACL: "public-read",
+      CacheControl: "max-age=0,private",
+    })
+    .promise();
+
+  core.setOutput("s3-bucket-key", key);
+}
+
+async function createArtifacts(workingDirectory: string) {
+  await core.group("Creating static artifact", async () => {
     try {
       const packDetails: { filename: string }[] = JSON.parse(
         await execute(`npm pack --json`, workingDirectory)
       );
 
-      const s3 = new AWS.S3({
-        signatureVersion: "v4",
-      });
-
       for (let file of packDetails) {
         const localFile = workingDirectory + "/" + file.filename;
-        const key = (BUCKET_KEY_PREFIX + "/").replace(/^(\/)+/, "") + file.filename;
-        core.info(`Uploading ${localFile} to ${key}`);
 
-        await s3
-          .putObject({
-            Bucket: BUCKET,
-            Key: key,
-            Body: fs.createReadStream(localFile),
-            ContentType: "application/tar",
-            ACL: "public-read",
-            CacheControl: "max-age=0,private",
-          })
-          .promise();
+        // Assuming the current working directory is /home/user/files/plz-upload
+        const artifactClient = artifact.create();
 
-        core.setOutput("s3-bucket-key", key);
+        await artifactClient.uploadArtifact(file.filename, [localFile], workingDirectory, {
+          continueOnError: false,
+        });
 
-        fs.rmSync(localFile);
+        await uploadTarToS3(localFile);
+        await io.rmRF(localFile);
       }
     } catch (e) {
-      core.error(`Error publising to bucket.`);
       core.error(e);
     }
   });
@@ -385,7 +392,7 @@ const run = async () => {
     return;
   }
 
-  await uploadTarToS3(workingDirectory);
+  await createArtifacts(workingDirectory);
 
   if (!gitTag) {
     if (branch === "master" || branch == "main") {
