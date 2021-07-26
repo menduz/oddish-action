@@ -6,6 +6,7 @@ import core = require("@actions/core");
 import github = require("@actions/github");
 
 import { exec } from "child_process";
+import FormData from "form-data";
 import fetch from "node-fetch";
 import semver = require("semver");
 import git = require("git-rev-sync");
@@ -20,6 +21,39 @@ async function setCommitHash(workingDirectory: string) {
   const packageJson = JSON.parse(fs.readFileSync(workingDirectory + "/package.json").toString());
   packageJson.commit = commitHash;
   fs.writeFileSync(workingDirectory + "/package.json", JSON.stringify(packageJson, null, 2));
+}
+
+async function triggerPipeline(packageName: string, packageTag: string, packageVersion: string) {
+  const GITLAB_STATIC_PIPELINE_TOKEN = core.getInput("gitlab-token", { required: false });
+  const GITLAB_STATIC_PIPELINE_URL = core.getInput("gitlab-pipeline-url", { required: false });
+
+  if (!GITLAB_STATIC_PIPELINE_URL) return;
+
+  await core.group("Triggering external pipeline", async () => {
+    const body = new FormData();
+    if (GITLAB_STATIC_PIPELINE_TOKEN) {
+      body.append("token", GITLAB_STATIC_PIPELINE_TOKEN);
+    }
+    body.append("ref", "master");
+    body.append("variables[PACKAGE_NAME]", packageName);
+    body.append("variables[PACKAGE_DIST_TAG]", packageTag);
+    body.append("variables[PACKAGE_VERSION]", packageVersion);
+
+    try {
+      const r = await fetch(GITLAB_STATIC_PIPELINE_URL, {
+        body,
+        method: "POST",
+      });
+
+      if (r.ok) {
+        core.info(`Status: ${r.status}`);
+      } else {
+        core.error(`Error triggering pipeline. status: ${r.status}`);
+      }
+    } catch (e) {
+      core.error(`Error triggering pipeline. Unhandled error.`);
+    }
+  });
 }
 
 const time = new Date()
@@ -336,6 +370,9 @@ const run = async () => {
   }
 
   await execute(`npm info . dist-tags --json`, workingDirectory);
+
+  const pkgName = (await execute(`npm info . name`, workingDirectory)).trim();
+  await triggerPipeline(pkgName, newVersion, linkLatest ? "latest" : npmTag || "ci");
 };
 
 run().catch((e) => {

@@ -55,6 +55,11 @@ jobs:
 
           ### Set always-auth in npmrc
           # always-auth: true
+
+
+          ### Gitlab pipeline trigger
+          # gitlab-token: asdasd123
+          # gitlab-pipeline-url: https://gitlab.example.com/api/v4/projects/9/trigger/pipeline
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
