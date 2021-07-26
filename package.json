@@ -29,6 +29,7 @@
     "@types/node-fetch": "^2.5.12",
     "@types/semver": "^7.3.8",
     "@zeit/ncc": "^0.22.3",
+    "aws-sdk": "^2.954.0",
     "git-rev-sync": "^3.0.1",
     "node-fetch": "^2.6.1",
     "semver": "^7.3.5",

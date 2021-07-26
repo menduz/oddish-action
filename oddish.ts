@@ -7,13 +7,24 @@ import github = require("@actions/github");
 
 import { exec } from "child_process";
 import FormData from "form-data";
+import AWS from "aws-sdk";
 import fetch from "node-fetch";
 import semver = require("semver");
 import git = require("git-rev-sync");
 import fs = require("fs");
+import path = require("path");
 import os = require("os");
 import { execSync } from "child_process";
 import { resolve } from "path";
+import { tmpdir } from "os";
+
+const currentTmpDir = new Promise<string>((resolve) => {
+  fs.mkdtemp(path.join(tmpdir(), "foo-"), (err, folder) => {
+    if (err) throw err;
+    resolve(folder);
+    // Prints: /tmp/foo-itXde2
+  });
+});
 
 const commitHash = execSync("git rev-parse HEAD").toString().trim();
 
@@ -52,6 +63,60 @@ async function triggerPipeline(packageName: string, packageTag: string, packageV
       }
     } catch (e) {
       core.error(`Error triggering pipeline. Unhandled error.`);
+    }
+  });
+}
+
+async function uploadTarToS3(workingDirectory: string) {
+  const BUCKET = core.getInput("s3-bucket", { required: false });
+  const BUCKET_KEY_PREFIX = core.getInput("s3-bucket-key-prefix", { required: false });
+  const AWS_CLIENT_ID = core.getInput("s3-bucket-key-id", { required: false });
+  const AWS_CLIENT_SECRET = core.getInput("s3-bucket-key-secret", { required: false });
+
+  if (!BUCKET) return;
+
+  if (!AWS_CLIENT_ID || !AWS_CLIENT_SECRET || !BUCKET_KEY_PREFIX) {
+    core.warning(
+      "Skipping bucket publication, s3-bucket-key-id, s3-bucket-key-secret and s3-bucket-key-prefix are required"
+    );
+    return;
+  }
+
+  await core.group("Uploading to S3 bucket", async () => {
+    try {
+      const packDetails: { filename: string }[] = JSON.parse(
+        await execute(`npm pack --json ${JSON.stringify(await currentTmpDir)}`, workingDirectory)
+      );
+
+      const s3 = new AWS.S3({
+        signatureVersion: "v4",
+        accessKeyId: AWS_CLIENT_ID,
+        secretAccessKey: AWS_CLIENT_SECRET,
+      });
+
+      for (let file of packDetails) {
+        const localFile = workingDirectory + "/" + file.filename;
+        const key = (BUCKET_KEY_PREFIX + "/").replace(/^(\/)+/, "") + file.filename;
+        core.info(`Uploading ${localFile} to ${key}`);
+
+        await s3
+          .putObject({
+            Bucket: BUCKET,
+            Key: key,
+            Body: fs.createReadStream(localFile),
+            ContentType: "application/tar",
+            ACL: "public-read",
+            CacheControl: "max-age=0,private",
+          })
+          .promise();
+
+        core.setOutput("s3-bucket-key", key);
+
+        fs.rmSync(localFile);
+      }
+    } catch (e) {
+      core.error(`Error publising to bucket.`);
+      core.error(e);
     }
   });
 }
@@ -316,6 +381,14 @@ const run = async () => {
   await setCommitHash(workingDirectory);
   await setVersion(newVersion, workingDirectory);
 
+  // skip publishing
+  if (core.getInput("only-update-versions") && core.getBooleanInput("only-update-versions")) {
+    core.info("> Skipping publishing.");
+    return;
+  }
+
+  await uploadTarToS3(workingDirectory);
+
   if (!gitTag) {
     if (branch === "master" || branch == "main") {
       npmTag = "next";
@@ -339,12 +412,6 @@ const run = async () => {
   }
 
   console.log(`    tag: ${npmTag || "ci"}\n`);
-
-  // skip publishing
-  if (core.getInput("only-update-versions") && core.getBooleanInput("only-update-versions")) {
-    core.info("> Skipping publishing.");
-    return;
-  }
 
   if (npmTag) {
     await publish([npmTag], workingDirectory);

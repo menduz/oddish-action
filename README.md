@@ -60,6 +60,13 @@ jobs:
           ### Gitlab pipeline trigger
           # gitlab-token: asdasd123
           # gitlab-pipeline-url: https://gitlab.example.com/api/v4/projects/9/trigger/pipeline
+
+
+          ### Publish to S3
+          # s3-bucket: my-cdn-bucket
+          # s3-bucket-key-prefix: cdn/${{ github.base }}
+          # s3-bucket-key-id: ${{secrets.BUCKET_KEY_ID}}
+          # s3-bucket-key-secret: ${{secrets.BUCKET_KEY_SECRET}}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
