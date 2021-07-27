@@ -26,12 +26,12 @@ async function setCommitHash(workingDirectory: string) {
   fs.writeFileSync(workingDirectory + "/package.json", JSON.stringify(packageJson, null, 2));
 }
 
-async function triggerPipeline(
-  packageName: string,
-  packageTag: string,
-  packageVersion: string,
-  registryUrl: string
-) {
+async function triggerPipeline(data: {
+  packageName: string;
+  packageTag: string;
+  packageVersion: string;
+  registryUrl: string;
+}) {
   const GITLAB_STATIC_PIPELINE_TOKEN = core.getInput("gitlab-token", { required: false });
   const GITLAB_STATIC_PIPELINE_URL = core.getInput("gitlab-pipeline-url", { required: false });
 
@@ -43,10 +43,10 @@ async function triggerPipeline(
       body.append("token", GITLAB_STATIC_PIPELINE_TOKEN);
     }
     body.append("ref", "master");
-    body.append("variables[PACKAGE_NAME]", packageName);
-    body.append("variables[PACKAGE_DIST_TAG]", packageTag);
-    body.append("variables[PACKAGE_VERSION]", packageVersion);
-    body.append("variables[REGISTRY_URL]", registryUrl);
+    body.append("variables[PACKAGE_NAME]", data.packageName);
+    body.append("variables[PACKAGE_DIST_TAG]", data.packageTag);
+    body.append("variables[PACKAGE_VERSION]", data.packageVersion);
+    body.append("variables[REGISTRY_URL]", data.registryUrl);
     body.append("variables[REPO]", github.context.repo.repo);
     body.append("variables[REPO_OWNER]", github.context.repo.owner);
     body.append("variables[COMMIT]", commitHash);
@@ -443,8 +443,13 @@ const run = async () => {
 
   await execute(`npm info . dist-tags --json`, workingDirectory);
 
-  const pkgName = (await execute(`npm info . name`, workingDirectory)).trim();
-  await triggerPipeline(pkgName, newVersion, linkLatest ? "latest" : npmTag || "ci", registryUrl);
+  const packageName = (await execute(`npm info . name`, workingDirectory)).trim();
+  await triggerPipeline({
+    packageName,
+    packageVersion: newVersion,
+    packageTag: linkLatest ? "latest" : npmTag || "ci",
+    registryUrl,
+  });
 };
 
 run().catch((e) => {
