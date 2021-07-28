@@ -41,6 +41,7 @@ async function triggerPipeline(data: {
     const body = new FormData();
     if (GITLAB_STATIC_PIPELINE_TOKEN) {
       body.append("token", GITLAB_STATIC_PIPELINE_TOKEN);
+      core.warning('MISSING gitlab-pipeline-url')
     }
     body.append("ref", "master");
     body.append("variables[PACKAGE_NAME]", data.packageName);
@@ -60,22 +61,22 @@ async function triggerPipeline(data: {
       if (r.ok) {
         core.info(`Status: ${r.status}`);
       } else {
-        core.error(`Error triggering pipeline. status: ${r.status}`);
+        core.setFailed(`Error triggering pipeline. status: ${r.status}`);
       }
     } catch (e) {
-      core.error(`Error triggering pipeline. Unhandled error.`);
+      core.setFailed(`Error triggering pipeline. Unhandled error.`);
     }
   });
 }
 
 async function uploadTarToS3(localFile: string) {
-  const BUCKET = core.getInput("s3-bucket", { required: false });
-  const BUCKET_KEY_PREFIX = core.getInput("s3-bucket-key-prefix", { required: false });
+  const BUCKET = core.getInput("s3-bucket", { required: false, trimWhitespace: true });
+  const BUCKET_KEY_PREFIX = core.getInput("s3-bucket-key-prefix", { required: false }) || "";
 
-  if (!BUCKET) return;
+  if (typeof BUCKET != "string") return;
 
-  if (!BUCKET_KEY_PREFIX) {
-    core.warning("Skipping bucket publication s3-bucket-key-prefix is required");
+  if (!BUCKET) {
+    core.setFailed("s3-bucket is empty");
     return;
   }
 
