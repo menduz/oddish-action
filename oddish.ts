@@ -3,23 +3,127 @@
 // tslint:disable:no-console
 
 import core = require("@actions/core");
+import io = require("@actions/io");
+import artifact = require("@actions/artifact");
 import github = require("@actions/github");
 
 import { exec } from "child_process";
+import FormData from "form-data";
+import AWS from "aws-sdk";
 import fetch from "node-fetch";
 import semver = require("semver");
 import git = require("git-rev-sync");
 import fs = require("fs");
 import os = require("os");
 import { execSync } from "child_process";
-import { resolve } from "path";
+import { basename, resolve } from "path";
 
 const commitHash = execSync("git rev-parse HEAD").toString().trim();
 
-async function setCommitHash() {
-  const packageJson = JSON.parse(fs.readFileSync("package.json").toString());
+async function setCommitHash(workingDirectory: string) {
+  const packageJson = JSON.parse(fs.readFileSync(workingDirectory + "/package.json").toString());
   packageJson.commit = commitHash;
-  fs.writeFileSync("package.json", JSON.stringify(packageJson, null, 2));
+  fs.writeFileSync(workingDirectory + "/package.json", JSON.stringify(packageJson, null, 2));
+}
+
+async function triggerPipeline(data: {
+  packageName: string;
+  packageTag: string;
+  packageVersion: string;
+  registryUrl: string;
+}) {
+  const GITLAB_STATIC_PIPELINE_TOKEN = core.getInput("gitlab-token", { required: false });
+  const GITLAB_STATIC_PIPELINE_URL = core.getInput("gitlab-pipeline-url", { required: false });
+
+  if (!GITLAB_STATIC_PIPELINE_URL) return;
+
+  await core.group("Triggering external pipeline", async () => {
+    const body = new FormData();
+    if (GITLAB_STATIC_PIPELINE_TOKEN) {
+      body.append("token", GITLAB_STATIC_PIPELINE_TOKEN);
+    }
+    body.append("ref", "master");
+    body.append("variables[PACKAGE_NAME]", data.packageName);
+    body.append("variables[PACKAGE_DIST_TAG]", data.packageTag);
+    body.append("variables[PACKAGE_VERSION]", data.packageVersion);
+    body.append("variables[REGISTRY_URL]", data.registryUrl);
+    body.append("variables[REPO]", github.context.repo.repo);
+    body.append("variables[REPO_OWNER]", github.context.repo.owner);
+    body.append("variables[COMMIT]", commitHash);
+
+    try {
+      const r = await fetch(GITLAB_STATIC_PIPELINE_URL, {
+        body,
+        method: "POST",
+      });
+
+      if (r.ok) {
+        core.info(`Status: ${r.status}`);
+      } else {
+        core.error(`Error triggering pipeline. status: ${r.status}`);
+      }
+    } catch (e) {
+      core.error(`Error triggering pipeline. Unhandled error.`);
+    }
+  });
+}
+
+async function uploadTarToS3(localFile: string) {
+  const BUCKET = core.getInput("s3-bucket", { required: false });
+  const BUCKET_KEY_PREFIX = core.getInput("s3-bucket-key-prefix", { required: false });
+
+  if (!BUCKET) return;
+
+  if (!BUCKET_KEY_PREFIX) {
+    core.warning("Skipping bucket publication s3-bucket-key-prefix is required");
+    return;
+  }
+
+  const s3 = new AWS.S3({
+    signatureVersion: "v4",
+  });
+
+  const key = (BUCKET_KEY_PREFIX + "/").replace(/^(\/)+/, "") + basename(localFile);
+  core.info(`Uploading ${localFile} to ${key}`);
+
+  await s3
+    .putObject({
+      Bucket: BUCKET,
+      Key: key,
+      Body: fs.createReadStream(localFile),
+      ContentType: "application/tar",
+      ACL: "public-read",
+      CacheControl: "max-age=0,private",
+    })
+    .promise();
+
+  core.setOutput("s3-bucket-key", key);
+}
+
+async function createArtifacts(workingDirectory: string) {
+  await core.group("Creating static artifact", async () => {
+    try {
+      const packDetails: { filename: string }[] = JSON.parse(
+        await execute(`npm pack --json`, workingDirectory)
+      );
+
+      for (let file of packDetails) {
+        const localFile = workingDirectory + "/" + file.filename;
+
+        // Assuming the current working directory is /home/user/files/plz-upload
+        const artifactClient = artifact.create();
+
+        await artifactClient.uploadArtifact(file.filename, [localFile], workingDirectory, {
+          continueOnError: false,
+        });
+
+        await uploadTarToS3(localFile);
+        await io.rmRF(localFile);
+      }
+    } catch (e) {
+      core.error(e);
+    }
+  });
 }
 
 const time = new Date()
@@ -162,7 +266,7 @@ function snapshotize(value: string, workingDirectory: string) {
     throw new Error("Unable to get git commit");
   }
 
-  if (core.getBooleanInput("deterministic-snapshot")) {
+  if (core.getInput("deterministic-snapshot") && core.getBooleanInput("deterministic-snapshot")) {
     return value + "-" + github.context.runId + ".commit-" + commit;
   } else {
     return value + "-" + time + ".commit-" + commit;
@@ -279,8 +383,16 @@ const run = async () => {
   console.log(`  publishing:`);
   console.log(`    version: ${newVersion}`);
 
-  await setCommitHash();
+  await setCommitHash(workingDirectory);
   await setVersion(newVersion, workingDirectory);
+
+  // skip publishing
+  if (core.getInput("only-update-versions") && core.getBooleanInput("only-update-versions")) {
+    core.info("> Skipping publishing.");
+    return;
+  }
+
+  await createArtifacts(workingDirectory);
 
   if (!gitTag) {
     if (branch === "master" || branch == "main") {
@@ -336,6 +448,14 @@ const run = async () => {
   }
 
   await execute(`npm info . dist-tags --json`, workingDirectory);
+
+  const packageName = (await execute(`npm info . name`, workingDirectory)).trim();
+  await triggerPipeline({
+    packageName,
+    packageVersion: newVersion,
+    packageTag: linkLatest ? "latest" : npmTag || "ci",
+    registryUrl,
+  });
 };
 
 run().catch((e) => {

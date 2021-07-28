@@ -55,6 +55,16 @@ jobs:
 
           ### Set always-auth in npmrc
           # always-auth: true
+
+
+          ### Gitlab pipeline trigger
+          # gitlab-token: asdasd123
+          # gitlab-pipeline-url: https://gitlab.example.com/api/v4/projects/9/trigger/pipeline
+
+
+          ### Publish to S3
+          # s3-bucket: my-cdn-bucket
+          # s3-bucket-key-prefix: cdn/${{ github.base }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
