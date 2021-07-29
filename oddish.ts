@@ -419,12 +419,6 @@ const run = async () => {
 
   console.log(`    tag: ${npmTag || "ci"}\n`);
 
-  // skip publishing
-  if (core.getBooleanInput("only-update-versions")) {
-    core.info("> Skipping publishing.");
-    return;
-  }
-
   if (npmTag) {
     await publish([npmTag], workingDirectory);
   } else {
