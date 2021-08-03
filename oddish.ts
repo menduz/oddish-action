@@ -41,6 +41,7 @@ async function triggerPipeline(data: {
     const body = new FormData();
     if (GITLAB_STATIC_PIPELINE_TOKEN) {
       body.append("token", GITLAB_STATIC_PIPELINE_TOKEN);
+    } else {
       core.warning('MISSING gitlab-pipeline-url')
     }
     body.append("ref", "master");
