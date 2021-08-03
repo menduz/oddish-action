@@ -74,12 +74,7 @@ async function uploadTarToS3(localFile: string) {
   const BUCKET = core.getInput("s3-bucket", { required: false, trimWhitespace: true });
   const BUCKET_KEY_PREFIX = core.getInput("s3-bucket-key-prefix", { required: false }) || "";
 
-  if (typeof BUCKET != "string") return;
-
-  if (!BUCKET) {
-    core.setFailed("s3-bucket is empty");
-    return;
-  }
+  if (typeof BUCKET != "string" || !BUCKET) return;
 
   const s3 = new AWS.S3({
     signatureVersion: "v4",
