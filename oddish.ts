@@ -20,8 +20,12 @@ import { basename, resolve } from "path";
 
 const commitHash = execSync("git rev-parse HEAD").toString().trim();
 
+function readPackageJson(workingDirectory: string) {
+  return JSON.parse(fs.readFileSync(workingDirectory + "/package.json", "utf8").toString());
+}
+
 async function setCommitHash(workingDirectory: string) {
-  const packageJson = JSON.parse(fs.readFileSync(workingDirectory + "/package.json").toString());
+  const packageJson = readPackageJson(workingDirectory);
   packageJson.commit = commitHash;
   fs.writeFileSync(workingDirectory + "/package.json", JSON.stringify(packageJson, null, 2));
 }
@@ -36,13 +40,14 @@ async function triggerPipeline(data: {
   const GITLAB_STATIC_PIPELINE_URL = core.getInput("gitlab-pipeline-url", { required: false });
 
   if (!GITLAB_STATIC_PIPELINE_URL) return;
+  if (!data.packageName) throw new Error("packageName is missing");
 
   await core.group("Triggering external pipeline", async () => {
     const body = new FormData();
     if (GITLAB_STATIC_PIPELINE_TOKEN) {
       body.append("token", GITLAB_STATIC_PIPELINE_TOKEN);
     } else {
-      core.warning('MISSING gitlab-pipeline-url')
+      core.warning("MISSING gitlab-pipeline-url");
     }
     body.append("ref", "master");
     body.append("variables[PACKAGE_NAME]", data.packageName);
@@ -242,7 +247,7 @@ async function publish(npmTags: string[], workingDirectory: string): Promise<str
 }
 
 async function getVersion(workingDirectory: string) {
-  const json = JSON.parse(fs.readFileSync(workingDirectory + "/package.json", "utf8"));
+  const json = readPackageJson(workingDirectory);
 
   let pkgJsonVersion = json.version;
   if (!pkgJsonVersion) pkgJsonVersion = "0.0.0";
@@ -375,7 +380,8 @@ const run = async () => {
   } else {
     newVersion = await getSnapshotVersion(workingDirectory, registryUrl);
   }
-
+  const packageName = readPackageJson(workingDirectory).name;
+  console.log(`  package.json#name: ${packageName}`);
   console.log(`  package.json#version: ${await getVersion(workingDirectory)}`);
   console.log(`  publishing:`);
   console.log(`    version: ${newVersion}`);
@@ -424,8 +430,7 @@ const run = async () => {
   if (linkLatest) {
     try {
       if (!tags.latest || semver.gte(newVersion, tags.latest)) {
-        const pkgName = (await execute(`npm info . name`, workingDirectory)).trim();
-        await execute(`npm dist-tag add ${pkgName}@${newVersion} latest`, workingDirectory);
+        await execute(`npm dist-tag add ${packageName}@${newVersion} latest`, workingDirectory);
         console.log(`  publishing:\n    version: ${newVersion}`);
         core.setOutput("latest", "true");
       } else {
@@ -440,7 +445,6 @@ const run = async () => {
 
   await execute(`npm info . dist-tags --json`, workingDirectory);
 
-  const packageName = (await execute(`npm info . name`, workingDirectory)).trim();
   await triggerPipeline({
     packageName,
     packageVersion: newVersion,
