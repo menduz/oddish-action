@@ -110,7 +110,7 @@ async function createArtifacts(workingDirectory: string) {
       );
 
       for (let file of packDetails) {
-        const localFile = workingDirectory + "/" + file.filename;
+        const localFile = workingDirectory + "/" + file.filename.replace('@', ' ').replace('/','-');
 
         // Assuming the current working directory is /home/user/files/plz-upload
         const artifactClient = artifact.create();
