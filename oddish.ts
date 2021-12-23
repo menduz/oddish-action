@@ -110,12 +110,14 @@ async function createArtifacts(workingDirectory: string) {
       );
 
       for (let file of packDetails) {
-        const localFile = workingDirectory + "/" + file.filename;
+        // This is workaround of a NPM bug which returns wrong filename
+        const filename = file.filename.replace(/^@/, '').replace(/\//, '-')
+        const localFile = workingDirectory + "/" + filename;
 
         // Assuming the current working directory is /home/user/files/plz-upload
         const artifactClient = artifact.create();
 
-        await artifactClient.uploadArtifact(file.filename, [localFile], workingDirectory, {
+        await artifactClient.uploadArtifact(filename, [localFile], workingDirectory, {
           continueOnError: false,
         });
 
