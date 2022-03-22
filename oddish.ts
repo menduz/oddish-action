@@ -323,7 +323,8 @@ const run = async () => {
   }
 
   const alwaysAuth: string = core.getInput("always-auth") || "false";
-  const mainBranchLatestTag: string = core.getInput("main-branch-latest-tag") || "false";
+  const mainBranchLatestTag: boolean =
+    (core.getInput("main-branch-latest-tag") || "false") != "false";
 
   if (!process.env.NODE_AUTH_TOKEN) {
     core.warning(`! warn: variable NODE_AUTH_TOKEN is not set`);
