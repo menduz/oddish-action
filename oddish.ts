@@ -404,7 +404,7 @@ const run = async () => {
     if (branch === "master" || branch == "main") {
       if (mainBranchLatestTag) {
         npmTag = "latest";
-        linkLatest = true
+        linkLatest = true;
       } else {
         npmTag = "next";
       }
