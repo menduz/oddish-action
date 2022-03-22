@@ -111,7 +111,7 @@ async function createArtifacts(workingDirectory: string) {
 
       for (let file of packDetails) {
         // This is workaround of a NPM bug which returns wrong filename
-        const filename = file.filename.replace(/^@/, '').replace(/\//, '-')
+        const filename = file.filename.replace(/^@/, "").replace(/\//, "-");
         const localFile = workingDirectory + "/" + filename;
 
         // Assuming the current working directory is /home/user/files/plz-upload
@@ -124,7 +124,7 @@ async function createArtifacts(workingDirectory: string) {
         await uploadTarToS3(localFile);
         await io.rmRF(localFile);
       }
-    } catch (e) {
+    } catch (e: any) {
       core.error(e);
     }
   });
@@ -323,6 +323,7 @@ const run = async () => {
   }
 
   const alwaysAuth: string = core.getInput("always-auth") || "false";
+  const mainBranchLatestTag: string = core.getInput("main-branch-latest-tag") || "false";
 
   if (!process.env.NODE_AUTH_TOKEN) {
     core.warning(`! warn: variable NODE_AUTH_TOKEN is not set`);
@@ -401,7 +402,11 @@ const run = async () => {
 
   if (!gitTag) {
     if (branch === "master" || branch == "main") {
-      npmTag = "next";
+      if (mainBranchLatestTag) {
+        npmTag = "latest";
+      } else {
+        npmTag = "next";
+      }
     } else {
       core.info(
         `! canceling automatic npm publish. It can only be made in main/master branches or tags`
@@ -438,7 +443,7 @@ const run = async () => {
       } else {
         core.setOutput("latest", "false");
       }
-    } catch (e) {
+    } catch (e: any) {
       core.error(e);
     }
   } else {
