@@ -341,7 +341,7 @@ const run = async () => {
 
   let npmTag: string | null = null;
 
-  let gitTag: string | null = null;
+  let gitTag: string | null = process.env.GIT_TAG || null;
 
   if (github.context.ref.startsWith("refs/tags/")) {
     gitTag = github.context.ref.replace(/^refs\/tags\//, "");
