@@ -17,6 +17,7 @@ import fs = require("fs");
 import os = require("os");
 import { execSync } from "child_process";
 import { basename, resolve } from "path";
+import { writeFile } from "fs/promises";
 
 const cleanupSteps: Array<() => Promise<any>> = [];
 
@@ -151,9 +152,6 @@ function configAuthentication(registryUrl: string, alwaysAuth: string, workingDi
 }
 
 function writeRegistryToFile(registryUrl: string, fileLocation: string, alwaysAuth: string) {
-  cleanupSteps.push(async () => {
-    io.rmRF(fileLocation);
-  });
   let scope: string = core.getInput("scope");
   if (!scope && registryUrl.indexOf("npm.pkg.github.com") > -1) {
     scope = github.context.repo.owner;
@@ -168,14 +166,23 @@ function writeRegistryToFile(registryUrl: string, fileLocation: string, alwaysAu
   core.debug(`Setting auth in ${fileLocation}`);
   let newContents: string = "";
   if (fs.existsSync(fileLocation)) {
-    const curContents: string = fs.readFileSync(fileLocation, "utf8");
+    const curContents = fs.readFileSync(fileLocation, "utf8");
     curContents.split(os.EOL).forEach((line: string) => {
       // Add current contents unless they are setting the registry
       if (!line.toLowerCase().startsWith("registry")) {
         newContents += line + os.EOL;
       }
     });
+
+    cleanupSteps.push(async () => {
+      await writeFile(fileLocation, curContents);
+    });
+  } else {
+    cleanupSteps.push(async () => {
+      io.rmRF(fileLocation);
+    });
   }
+
   // Remove http: or https: from front of registry.
   const authString: string =
     registryUrl.replace(/(^\w+:|^)/, "") + ":_authToken=${NODE_AUTH_TOKEN}";
