@@ -18,6 +18,8 @@ import os = require("os");
 import { execSync } from "child_process";
 import { basename, resolve } from "path";
 
+const cleanupSteps: Array<() => Promise<any>> = [];
+
 const commitHash = execSync("git rev-parse HEAD").toString().trim();
 
 function readPackageJson(workingDirectory: string) {
@@ -149,6 +151,9 @@ function configAuthentication(registryUrl: string, alwaysAuth: string, workingDi
 }
 
 function writeRegistryToFile(registryUrl: string, fileLocation: string, alwaysAuth: string) {
+  cleanupSteps.push(async () => {
+    io.rmRF(fileLocation);
+  });
   let scope: string = core.getInput("scope");
   if (!scope && registryUrl.indexOf("npm.pkg.github.com") > -1) {
     scope = github.context.repo.owner;
@@ -462,8 +467,19 @@ const run = async () => {
   });
 };
 
-run().catch((e) => {
-  core.setFailed(e.message);
-  core.error(e);
-  process.exit(1);
-});
+async function cleanup() {
+  for (const step of cleanupSteps)
+    try {
+      await step();
+    } catch (err: any) {
+      core.error(err);
+    }
+}
+
+run()
+  .catch((e) => {
+    core.setFailed(e.message);
+    core.error(e);
+    process.exit(1);
+  })
+  .finally(cleanup);
