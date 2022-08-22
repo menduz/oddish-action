@@ -17,7 +17,6 @@ import fs = require("fs");
 import os = require("os");
 import { execSync } from "child_process";
 import { basename, resolve } from "path";
-import { writeFile } from "fs/promises";
 
 const cleanupSteps: Array<() => Promise<any>> = [];
 
@@ -175,7 +174,7 @@ function writeRegistryToFile(registryUrl: string, fileLocation: string, alwaysAu
     });
 
     cleanupSteps.push(async () => {
-      await writeFile(fileLocation, curContents);
+      fs.writeFileSync(fileLocation, curContents);
     });
   } else {
     cleanupSteps.push(async () => {
