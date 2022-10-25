@@ -419,6 +419,9 @@ const run = async () => {
       } else {
         npmTag = "next";
       }
+
+    } else if (core.getInput("branch-to-next") === branch) {
+      npmTag = "next";
     } else {
       core.info(
         `! canceling automatic npm publish. It can only be made in main/master branches or tags`
