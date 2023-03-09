@@ -334,7 +334,7 @@ const run = async () => {
   }
 
   const alwaysAuth: string = core.getInput("always-auth") || "false";
-  const mainBranchLatestTag: boolean = core.getBooleanInput("main-branch-latest-tag");
+  const skipOldVersionCheck: boolean = core.getBooleanInput("skip-old-version-check");
 
   if (!process.env.NODE_AUTH_TOKEN) {
     core.warning(`! warn: variable NODE_AUTH_TOKEN is not set`);
@@ -350,7 +350,7 @@ const run = async () => {
     process.env.TRAVIS_BRANCH ||
     (await getBranch(workingDirectory));
 
-  let npmTag: string | null = null;
+
 
   let gitTag: string | null = process.env.GIT_TAG || null;
 
@@ -360,7 +360,7 @@ const run = async () => {
 
   let newVersion: string | null = null;
 
-  let linkLatest = false;
+
 
   console.log(`  registry: ${registryUrl}`);
   console.log(`  cwd: ${workingDirectory}`);
@@ -375,25 +375,21 @@ const run = async () => {
     if (semver.valid(gitTag)) {
       if (semver.coerce(gitTag)!.version === gitTag) {
         // Contains no prerelease data and should go to latest
-        npmTag = "latest";
-        linkLatest = true;
         newVersion = gitTag;
       } else if (prerelease && prerelease.includes("rc")) {
         // Release candidate
-        npmTag = "rc";
         newVersion = gitTag;
       } else {
-        npmTag = "tag-" + gitTag;
         newVersion = await getSnapshotVersion(workingDirectory, registryUrl);
       }
     } else {
       core.warning(`invalid semver version: ${gitTag}`);
-      npmTag = "tag-" + gitTag;
       newVersion = await getSnapshotVersion(workingDirectory, registryUrl);
     }
   } else {
     newVersion = await getSnapshotVersion(workingDirectory, registryUrl);
   }
+
   const packageName = readPackageJson(workingDirectory).name;
   console.log(`  package.json#name: ${packageName}`);
   console.log(`  package.json#version: ${await getVersion(workingDirectory)}`);
@@ -411,46 +407,26 @@ const run = async () => {
 
   await createArtifacts(workingDirectory);
 
-  if (!gitTag) {
-    if (branch === "master" || branch == "main") {
-      if (mainBranchLatestTag) {
-        npmTag = "latest";
-        linkLatest = true;
-      } else {
-        npmTag = "next";
-      }
 
-    } else if (core.getInput("branch-to-next") === branch) {
-      npmTag = "next";
-    } else {
-      core.info(
-        `! canceling automatic npm publish. It can only be made in main/master branches or tags`
-      );
-      process.exit(0);
-    }
-  }
 
   const tags = await getReleaseTags(workingDirectory, registryUrl);
 
-  if (npmTag && npmTag in tags) {
+  let npmTag = getNpmTag(branch, gitTag)
+
+  if (!skipOldVersionCheck && npmTag && npmTag in tags) {
     if (semver.gte(tags[npmTag], newVersion)) {
       core.error(
         `! This version will be not published as "${npmTag}" because a ${tags[npmTag]} (${npmTag}) > ${newVersion} (current version). Publishing as "ci"\n`
       );
-      npmTag = null;
+      npmTag = "ci"
     }
   }
 
-  console.log(`    mainBranchLatestTag: ${mainBranchLatestTag}\n`);
-  console.log(`    tag: ${npmTag || "ci"}\n`);
+  console.log(`    tag: ${npmTag}\n`);
 
-  if (npmTag) {
-    await publish([npmTag], workingDirectory);
-  } else {
-    await publish(["ci"], workingDirectory);
-  }
+  await publish([npmTag], workingDirectory);
 
-  if (linkLatest) {
+  if (npmTag === 'latest') {
     try {
       if (!tags.latest || semver.gte(newVersion, tags.latest)) {
         await execute(`npm dist-tag add ${packageName}@${newVersion} latest`, workingDirectory);
@@ -471,10 +447,54 @@ const run = async () => {
   await triggerPipeline({
     packageName,
     packageVersion: newVersion,
-    packageTag: linkLatest ? "latest" : npmTag || "ci",
+    packageTag: npmTag || "ci",
     registryUrl,
   });
 };
+
+function getNpmTag(gitBranch: string, gitTag: string | null): string {
+  const overrideCustomDistTag: string = core.getInput("override-custom-tag") || "";
+  const mainBranchLatestTag: boolean = core.getBooleanInput("main-branch-latest-tag");
+  console.log(`    mainBranchLatestTag: ${mainBranchLatestTag}\n`);
+
+  if (overrideCustomDistTag) {
+    return overrideCustomDistTag
+  } else if (gitTag) {
+    const prerelease = semver.prerelease(gitTag);
+
+    if (semver.valid(gitTag)) {
+      if (semver.coerce(gitTag)!.version === gitTag) {
+        // Contains no prerelease data and should go to latest
+        return "latest";
+      } else if (prerelease && prerelease.includes("rc")) {
+        // Release candidate
+        return "rc";
+      } else {
+        return "tag-" + gitTag;
+      }
+    } else {
+      core.warning(`invalid semver version: ${gitTag}`);
+      return "tag-" + gitTag;
+    }
+  } else if (!gitTag) {
+    if (gitBranch === "master" || gitBranch == "main") {
+      if (mainBranchLatestTag) {
+        return "latest";
+      } else {
+        return "next";
+      }
+
+    } else if (core.getInput("branch-to-next") === gitBranch) {
+      return "next";
+    } else {
+      core.info(
+        `! canceling automatic npm publish. It can only be made in main/master branches or tags`
+      );
+      process.exit(0);
+    }
+  }
+  return "ci"
+}
 
 async function cleanup() {
   for (const step of cleanupSteps)

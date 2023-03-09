@@ -21,6 +21,14 @@ inputs:
     description: "Use main branch build to release 'latest' dist-tags"
     default: "false"
     required: false
+  override-custom-tag:
+    description: "Forces a specific npm dist-tag"
+    default: ""
+    required: false
+  skip-old-version-check:
+    description: "Skips the 'ci' dist tag when trying to override a dist-tag with an older version"
+    default: "false"
+    required: false
   always-auth:
     description: "Set always-auth in npmrc"
     default: "false"
