@@ -17,6 +17,10 @@ inputs:
   cwd:
     description: "Working directory"
     required: false
+  provenance:
+    description: "Use npm provenance"
+    default: "truek"
+    required: true
   main-branch-latest-tag:
     description: "Use main branch build to release 'latest' dist-tags"
     default: "false"
