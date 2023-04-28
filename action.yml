@@ -20,7 +20,7 @@ inputs:
   provenance:
     description: "Use npm provenance"
     default: "true"
-    required: true
+    required: false
   main-branch-latest-tag:
     description: "Use main branch build to release 'latest' dist-tags"
     default: "false"
