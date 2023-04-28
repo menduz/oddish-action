@@ -177,7 +177,9 @@ function writeRegistryToFile(registryUrl: string, fileLocation: string, alwaysAu
     });
   } else {
     cleanupSteps.push(async () => {
-      io.rmRF(fileLocation);
+      if (fs.existsSync(fileLocation)) {
+        await io.rmRF(fileLocation);
+      }
     });
   }
 
