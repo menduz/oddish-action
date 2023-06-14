@@ -8,7 +8,7 @@ import artifact = require("@actions/artifact");
 import github = require("@actions/github");
 import { exec } from "child_process";
 import FormData from "form-data";
-import S3 from "aws-sdk/clients/s3";
+import { S3 } from "@aws-sdk/client-s3";
 import fetch from "node-fetch";
 import semver = require("semver");
 import git = require("git-rev-sync");
@@ -80,11 +80,9 @@ async function uploadTarToS3(localFile: string) {
   const BUCKET = core.getInput("s3-bucket", { required: false, trimWhitespace: true });
   const BUCKET_KEY_PREFIX = core.getInput("s3-bucket-key-prefix", { required: false }) || "";
 
-  if (typeof BUCKET != "string" || !BUCKET) return;
+  if (!BUCKET) return;
 
-  const s3 = new S3({
-    signatureVersion: "v4",
-  });
+  const s3 = new S3({});
 
   const key = (BUCKET_KEY_PREFIX + "/").replace(/^(\/)+/, "") + basename(localFile);
   core.info(`Uploading ${localFile} to ${key}`);
@@ -97,8 +95,7 @@ async function uploadTarToS3(localFile: string) {
       ContentType: "application/tar",
       ACL: "public-read",
       CacheControl: "max-age=0,private",
-    })
-    .promise();
+    });
 
   core.setOutput("s3-bucket-key", key);
 }
