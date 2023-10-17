@@ -64479,7 +64479,7 @@ const run = async () => {
         else if (core.getInput("branch-to-next") === branch) {
             npmTag = "next";
         }
-        else if (customTag && customTag !== 'latest' && customTag !== 'next') {
+        else if (customTag && customTag !== 'latest' && customTag !== 'next' && core.getInput("branch-to-custom-tag") === branch) {
             npmTag = customTag;
         }
         else {
