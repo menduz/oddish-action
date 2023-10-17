@@ -413,6 +413,7 @@ const run = async () => {
   await createArtifacts(workingDirectory);
 
   if (!gitTag) {
+    const customTag = core.getInput("custom-tag") || 'ci'
     if (branch === "master" || branch == "main") {
       if (mainBranchLatestTag) {
         npmTag = "latest";
@@ -423,6 +424,8 @@ const run = async () => {
 
     } else if (core.getInput("branch-to-next") === branch) {
       npmTag = "next";
+    } else if (customTag !== 'latest' && customTag !== 'next' && core.getInput("branch-to-custom-tag") === branch) {
+      npmTag = customTag;
     } else {
       core.info(
         `! canceling automatic npm publish. It can only be made in main/master branches or tags`
