@@ -62,3 +62,11 @@ inputs:
   scope:
     description: "Optional scope for authenticating against scoped registries"
     required: false
+  custom-tag:
+    description: "Optional tag value to point instead of defining it with the git-tag or in function of current branch. When this value is set, `branch-to-custom-tag` has to be defined"
+    default: ""
+    required: false
+  branch-to-custom-tag:
+    description: "Required when `custom-tag` is defined. Set the branch is going to publish to `custom-tag`"
+    default: ""
+    required: false

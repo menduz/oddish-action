@@ -8,6 +8,7 @@
     Publish in @tag-[GIT_TAG] on non-semver tags.
     Publish in @rc all relase candidates (extracted from the tag).
     Publish in @next every main or master build.
+    Publish in @YYY when the branch is `branch-to-custom-tag` where `YYY` is the value set in `custom-tag`.
 
 This publishing method ignores completely the `version` field in package.json files, it publishes based on branches, tags and published versions.
 
