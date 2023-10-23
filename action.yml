@@ -56,6 +56,9 @@ inputs:
   s3-bucket:
     description: "Target s3 bucket"
     required: false
+  s3-bucket-region:
+    description: "Target s3 bucket region"
+    required: false
   s3-bucket-key-prefix:
     description: "Target s3 bucket key"
     required: false
