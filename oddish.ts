@@ -77,12 +77,13 @@ async function triggerPipeline(data: {
 }
 
 async function uploadTarToS3(localFile: string) {
-  const BUCKET = core.getInput("s3-bucket", { required: false, trimWhitespace: true });
+  const BUCKET = core.getInput("s3-bucket", { required: false });
+  const REGION = core.getInput("s3-bucket-region", { required: false });
   const BUCKET_KEY_PREFIX = core.getInput("s3-bucket-key-prefix", { required: false }) || "";
 
-  if (!BUCKET) return;
+  if (!BUCKET || !REGION) return;
 
-  const s3 = new S3({});
+  const s3 = new S3({ region: REGION });
 
   const key = (BUCKET_KEY_PREFIX + "/").replace(/^(\/)+/, "") + basename(localFile);
   core.info(`Uploading ${localFile} to ${key}`);

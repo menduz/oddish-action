@@ -64196,11 +64196,13 @@ async function triggerPipeline(data) {
     });
 }
 async function uploadTarToS3(localFile) {
-    const BUCKET = core.getInput("s3-bucket", { required: false, trimWhitespace: true });
+    const BUCKET = core.getInput("s3-bucket", { required: false });
+    const REGION = core.getInput("s3-bucket-region", { required: false });
     const BUCKET_KEY_PREFIX = core.getInput("s3-bucket-key-prefix", { required: false }) || "";
-    if (!BUCKET)
+    if (!BUCKET || !REGION)
         return;
-    const s3 = new client_s3_1.S3({});
+    core.info(`region ${REGION}`);
+    const s3 = new client_s3_1.S3({ region: REGION });
     const key = (BUCKET_KEY_PREFIX + "/").replace(/^(\/)+/, "") + (0, path_1.basename)(localFile);
     core.info(`Uploading ${localFile} to ${key}`);
     await s3
