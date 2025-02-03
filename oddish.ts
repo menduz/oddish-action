@@ -4,7 +4,7 @@
 
 import core = require("@actions/core");
 import io = require("@actions/io");
-import artifact = require("@actions/artifact");
+import { DefaultArtifactClient } from "@actions/artifact";
 import github = require("@actions/github");
 import { exec } from "child_process";
 import FormData from "form-data";
@@ -88,15 +88,14 @@ async function uploadTarToS3(localFile: string) {
   const key = (BUCKET_KEY_PREFIX + "/").replace(/^(\/)+/, "") + basename(localFile);
   core.info(`Uploading ${localFile} to ${key}`);
 
-  await s3
-    .putObject({
-      Bucket: BUCKET,
-      Key: key,
-      Body: fs.createReadStream(localFile),
-      ContentType: "application/tar",
-      ACL: "public-read",
-      CacheControl: "max-age=0,private",
-    });
+  await s3.putObject({
+    Bucket: BUCKET,
+    Key: key,
+    Body: fs.createReadStream(localFile),
+    ContentType: "application/tar",
+    ACL: "public-read",
+    CacheControl: "max-age=0,private",
+  });
 
   core.setOutput("s3-bucket-key", key);
 }
@@ -114,11 +113,9 @@ async function createArtifacts(workingDirectory: string) {
         const localFile = workingDirectory + "/" + filename;
 
         // Assuming the current working directory is /home/user/files/plz-upload
-        const artifactClient = artifact.create();
+        const artifact = new DefaultArtifactClient();
 
-        await artifactClient.uploadArtifact(filename, [localFile], workingDirectory, {
-          continueOnError: false,
-        });
+        await artifact.uploadArtifact(filename, [localFile], workingDirectory);
 
         await uploadTarToS3(localFile);
         await io.rmRF(localFile);
@@ -240,13 +237,16 @@ async function setVersion(newVersion: string, workingDirectory: string): Promise
   );
 }
 
-async function publish(npmTags: string[], workingDirectory: string, provenance: boolean): Promise<string> {
+async function publish(
+  npmTags: string[],
+  workingDirectory: string,
+  provenance: boolean
+): Promise<string> {
   core.setOutput("tags", npmTags.join(","));
 
   const args: string[] = [];
 
-  if (provenance)
-    args.push('--provenance')
+  if (provenance) args.push("--provenance");
 
   const access = core.getInput("access", { required: false });
 
@@ -414,8 +414,8 @@ const run = async () => {
   await createArtifacts(workingDirectory);
 
   if (!gitTag) {
-    const customTag = core.getInput("custom-tag")
-    const branchToCustomTag = core.getInput("branch-to-custom-tag")
+    const customTag = core.getInput("custom-tag");
+    const branchToCustomTag = core.getInput("branch-to-custom-tag");
 
     if (branch === "master" || branch == "main") {
       if (mainBranchLatestTag) {
@@ -424,10 +424,14 @@ const run = async () => {
       } else {
         npmTag = "next";
       }
-
     } else if (core.getInput("branch-to-next") === branch) {
       npmTag = "next";
-    } else if (customTag && branchToCustomTag === branch && customTag !== 'latest' && customTag !== 'next') {
+    } else if (
+      customTag &&
+      branchToCustomTag === branch &&
+      customTag !== "latest" &&
+      customTag !== "next"
+    ) {
       npmTag = customTag;
     } else {
       if (customTag) {
@@ -457,7 +461,7 @@ const run = async () => {
   console.log(`    mainBranchLatestTag: ${mainBranchLatestTag}\n`);
   console.log(`    tag: ${npmTag || "ci"}\n`);
 
-  const provenance = core.getBooleanInput('provenance', { required: false })
+  const provenance = core.getBooleanInput("provenance", { required: false });
 
   if (npmTag) {
     await publish([npmTag], workingDirectory, provenance);
